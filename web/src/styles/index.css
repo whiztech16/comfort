@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+    --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+
+  --color-powder: #dceaf7;
+  --color-calm: #477fa8;
+  --color-offwhite: #f7f9fb;
+  --color-charcoal: #263746;
+  --color-softgrey: #e6ebf0;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
