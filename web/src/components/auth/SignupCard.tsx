@@ -4,110 +4,101 @@ import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import GoogleIcon from "./Googleicon";
 
 const inputClass =
-  "h-12 w-full rounded-full border border-softgrey bg-white pl-11 pr-11 text-[0.875rem] text-charcoal outline-none transition placeholder:text-charcoal/45 focus:border-calm focus:ring-2 focus:ring-calm/20";
+  "mt-1.5 h-11 w-full rounded-lg border border-black bg-white px-3.5 text-[0.875rem] text-charcoal outline-none transition placeholder:text-charcoal/40 focus:border-black focus:ring-2 focus:ring-black/15";
 
-const iconClass =
-  "pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-charcoal/55";
+const labelClass = "block text-[0.875rem] font-medium text-charcoal";
 
-const linkClass =
-  "font-semibold text-charcoal underline underline-offset-2";
+const linkClass = "font-semibold text-charcoal underline underline-offset-2";
 
 export default function SignupCard() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="w-full rounded-xl bg-white p-7 shadow-[0_20px_60px_rgba(38,55,70,0.18)] md:p-8">
-      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-charcoal">
-        Join Comfort
+    <div className="w-full rounded-2xl bg-white p-6 shadow-[0_16px_50px_rgba(38,55,70,0.14)] sm:p-7">
+      <h1 className="text-[1.5rem] font-bold leading-tight tracking-[-0.02em] text-charcoal sm:text-[1.625rem]">
+        Create account
       </h1>
-      <p className="mt-1.5 text-[0.9rem] text-charcoal/50">
+      <p className="mt-1 text-[0.85rem] text-charcoal/55">
         Share when you’re ready. Receive kindness without pressure.
       </p>
 
-      <form className="mt-6 space-y-3" onSubmit={(e) => e.preventDefault()}>
-        {/* Display name */}
-        <div className="relative">
-          <label htmlFor="name" className="sr-only">
-            Display name
+      <form className="mt-5 space-y-4" onSubmit={(e) => e.preventDefault()}>
+        {/* Name */}
+        <div>
+          <label htmlFor="name" className={labelClass}>
+            Name
           </label>
-          <User aria-hidden className={iconClass} strokeWidth={1.75} />
           <input
             id="name"
             name="name"
             type="text"
             autoComplete="nickname"
-            placeholder="Display name"
+            placeholder="e.g. Alex Rivera"
             required
             maxLength={40}
             className={inputClass}
           />
         </div>
-        <p className="-mt-1 px-4 text-[0.75rem] text-charcoal/50">
-          This is the name others see, unless you choose to stay anonymous.
-        </p>
 
         {/* Email */}
-        <div className="relative">
-          <label htmlFor="email" className="sr-only">
+        <div>
+          <label htmlFor="email" className={labelClass}>
             Email
           </label>
-          <Mail aria-hidden className={iconClass} strokeWidth={1.75} />
           <input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="Email"
+            placeholder="e.g. alex@example.com"
             required
             className={inputClass}
           />
         </div>
 
         {/* Password */}
-        <div className="relative">
-          <label htmlFor="password" className="sr-only">
+        <div>
+          <label htmlFor="password" className={labelClass}>
             Password
           </label>
-          <Lock aria-hidden className={iconClass} strokeWidth={1.75} />
-          <input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            placeholder="Create a password"
-            required
-            minLength={8}
-            className={inputClass}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-charcoal/55 transition hover:text-charcoal focus-visible:outline-2 focus-visible:outline-calm"
-          >
-            {showPassword ? (
-              <Eye aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            ) : (
-              <EyeOff aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            )}
-          </button>
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="e.g. min. 8 characters"
+              required
+              minLength={8}
+              className={`${inputClass} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3.5 top-[calc(50%+3px)] -translate-y-1/2 text-charcoal/55 transition hover:text-charcoal focus-visible:outline-2 focus-visible:outline-calm"
+            >
+              {showPassword ? (
+                <Eye aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+              ) : (
+                <EyeOff aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+              )}
+            </button>
+          </div>
         </div>
-        <p className="-mt-1 px-4 text-[0.75rem] text-charcoal/50">
-          Use at least 8 characters.
-        </p>
 
         {/* Terms and Privacy */}
-        <label className="flex items-start gap-2.5 pt-1 text-[0.75rem] leading-snug text-charcoal/65">
+        <label className="flex items-start gap-2.5 pt-0.5 text-[0.725rem] leading-snug text-charcoal/70">
           <input
             type="checkbox"
             name="terms"
             required
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-softgrey accent-[#4a6b8c]"
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-black accent-[#4a6b8c]"
           />
           <span>
             I agree to the{" "}
             <Link to="/terms" className={linkClass}>
-              Terms of Service
+              Terms
             </Link>{" "}
             and{" "}
             <Link to="/privacy" className={linkClass}>
@@ -119,14 +110,14 @@ export default function SignupCard() {
 
         <button
           type="submit"
-          className="h-12 w-full rounded-full bg-[#4a6b8c] text-[0.9375rem] font-medium text-white transition hover:bg-[#3f5f80] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
+          className="mt-1 h-11 w-full rounded-lg bg-[#4a6b8c] text-[0.875rem] font-medium text-white transition hover:bg-[#3f5f80] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
         >
           Create account
         </button>
       </form>
 
       {/* Divider */}
-      <div className="my-5 flex items-center gap-3 text-[0.75rem] text-charcoal/45">
+      <div className="my-4 flex items-center gap-3 text-[0.7rem] text-charcoal/45">
         <span className="h-px flex-1 bg-softgrey" />
         or
         <span className="h-px flex-1 bg-softgrey" />
@@ -135,13 +126,13 @@ export default function SignupCard() {
       {/* Google */}
       <button
         type="button"
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-softgrey bg-white text-[0.875rem] font-medium text-charcoal transition hover:bg-offwhite focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
+        className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-black bg-white text-[0.8125rem] font-medium text-charcoal transition hover:bg-offwhite focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
       >
         <GoogleIcon />
         Continue with Google
       </button>
 
-      <p className="mt-5 text-center text-[0.75rem] text-charcoal/55">
+      <p className="mt-4 text-center text-[0.75rem] text-charcoal/55">
         Already have an account?{" "}
         <Link to="/login" className={linkClass}>
           Log in

@@ -3,10 +3,9 @@ import { Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 const inputClass =
-  "h-12 w-full rounded-full border border-softgrey bg-white pl-11 pr-11 text-[0.875rem] text-charcoal outline-none transition placeholder:text-charcoal/45 focus:border-calm focus:ring-2 focus:ring-calm/20";
+  "mt-1.5 h-11 w-full rounded-lg border border-black bg-white px-3.5 text-[0.875rem] text-charcoal outline-none transition placeholder:text-charcoal/40 focus:border-black focus:ring-2 focus:ring-black/15";
 
-const iconClass =
-  "pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-charcoal/55";
+const labelClass = "block text-[0.875rem] font-medium text-charcoal";
 
 function GoogleIcon() {
   return (
@@ -35,78 +34,77 @@ export default function LoginCard() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="w-full rounded-xl bg-white p-7 shadow-[0_20px_60px_rgba(38,55,70,0.18)] md:p-8">
-      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-charcoal">
+    <div className="w-full rounded-2xl bg-white p-6 shadow-[0_16px_50px_rgba(38,55,70,0.14)] sm:p-7">
+      <h1 className="text-[1.5rem] font-bold leading-tight tracking-[-0.02em] text-charcoal sm:text-[1.625rem]">
         Welcome back
       </h1>
-      <p className="mt-1.5 text-[0.9rem] text-charcoal/50">
+      <p className="mt-1 text-[0.85rem] text-charcoal/55">
         Your space is always here for you.
       </p>
 
-      <form className="mt-6 space-y-3" onSubmit={(e) => e.preventDefault()}>
+      <form className="mt-5 space-y-4" onSubmit={(e) => e.preventDefault()}>
         {/* Email or username */}
-        <div className="relative">
-          <label htmlFor="identifier" className="sr-only">
+        <div>
+          <label htmlFor="identifier" className={labelClass}>
             Email or username
           </label>
-          <Mail aria-hidden className={iconClass} strokeWidth={1.75} />
           <input
             id="identifier"
             name="identifier"
             type="text"
             autoComplete="username"
-            placeholder="Email or username"
+            placeholder="e.g. alex@example.com"
             className={inputClass}
           />
         </div>
 
         {/* Password */}
-        <div className="relative">
-          <label htmlFor="password" className="sr-only">
-            Password
-          </label>
-          <Lock aria-hidden className={iconClass} strokeWidth={1.75} />
-          <input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            placeholder="Password"
-            className={inputClass}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-charcoal/55 transition hover:text-charcoal focus-visible:outline-2 focus-visible:outline-calm"
-          >
-            {showPassword ? (
-              <Eye aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            ) : (
-              <EyeOff aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            )}
-          </button>
-        </div>
-
-        <div className="text-right">
-          <Link
-            to="/reset-password"
-            className="text-[0.75rem] font-semibold text-charcoal underline underline-offset-2"
-          >
-            Forgot password?
-          </Link>
+        <div>
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className={labelClass}>
+              Password
+            </label>
+            <Link
+              to="/reset-password"
+              className="text-[0.75rem] font-semibold text-charcoal underline underline-offset-2"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="e.g. enter your password"
+              className={`${inputClass} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3.5 top-[calc(50%+3px)] -translate-y-1/2 text-charcoal/55 transition hover:text-charcoal focus-visible:outline-2 focus-visible:outline-calm"
+            >
+              {showPassword ? (
+                <Eye aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+              ) : (
+                <EyeOff aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+              )}
+            </button>
+          </div>
         </div>
 
         <button
           type="submit"
-          className="h-12 w-full rounded-full bg-[#4a6b8c] text-[0.9375rem] font-medium text-white transition hover:bg-[#3f5f80] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
+          className="mt-1 h-11 w-full rounded-lg bg-[#4a6b8c] text-[0.875rem] font-medium text-white transition hover:bg-[#3f5f80] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
         >
           Log in
         </button>
       </form>
 
       {/* Divider */}
-      <div className="my-5 flex items-center gap-3 text-[0.75rem] text-charcoal/45">
+      <div className="my-4 flex items-center gap-3 text-[0.7rem] text-charcoal/45">
         <span className="h-px flex-1 bg-softgrey" />
         or
         <span className="h-px flex-1 bg-softgrey" />
@@ -115,13 +113,13 @@ export default function LoginCard() {
       {/* Google */}
       <button
         type="button"
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-softgrey bg-white text-[0.875rem] font-medium text-charcoal transition hover:bg-offwhite focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
+        className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-black bg-white text-[0.8125rem] font-medium text-charcoal transition hover:bg-offwhite focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm"
       >
         <GoogleIcon />
         Continue with Google
       </button>
 
-      <p className="mt-5 text-center text-[0.75rem] text-charcoal/55">
+      <p className="mt-4 text-center text-[0.75rem] text-charcoal/55">
         New to Comfort?{" "}
         <Link
           to="/signup"
