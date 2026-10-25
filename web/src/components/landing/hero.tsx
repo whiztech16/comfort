@@ -13,8 +13,7 @@ export default function Hero() {
         </h1>
 
         <p className="mt-6 max-w-[19rem] text-[0.9rem] leading-[1.7] text-white/95 [text-shadow:0_1px_16px_rgba(0,0,0,0.2)] md:max-w-[32rem] md:text-[0.95rem] lg:mt-7">
-          A safe, gentle space to share what you’re going through — and receive
-          a little comfort when you need it.
+          Whether you're feeling lonely, going through something difficult, or simply need someone to talk to, there's a place for you here
         </p>
 
         <Link
