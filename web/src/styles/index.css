@@ -15,3 +15,114 @@ html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+/* Dove animation: components/messaging/DoveAnimation.tsx */
+@keyframes dove-fly {
+  0% {
+    transform: translate(0, 0) scale(0.6) rotate(4deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.5 - 7vh))
+      scale(1) rotate(-3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.45) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+@keyframes dove-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25%,
+  70% {
+    opacity: 1;
+  }
+}
+
+@keyframes wing-flap {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(32deg);
+  }
+}
+
+@keyframes dove-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.dove-fly {
+  animation: dove-fly 1.8s cubic-bezier(0.4, 0.05, 0.3, 1) forwards;
+}
+
+.dove-wing,
+.dove-wing-back {
+  transform-box: view-box;
+  transform-origin: 112px 66px;
+  animation: wing-flap 0.3s ease-in-out infinite;
+}
+
+.dove-wing-back {
+  animation-delay: -0.08s;
+}
+
+.dove-body {
+  animation: dove-bob 0.3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dove-fly {
+    animation: dove-fade 1.8s ease-in-out forwards;
+  }
+  .dove-wing,
+  .dove-wing-back,
+  .dove-body {
+    animation: none;
+  }
+}
+/* Onboarding welcome screen entrance: components/onboarding/WelcomeScreen.tsx */
+@keyframes welcome-card-in {
+  from {
+    opacity: 0;
+    translate: 0 2rem;
+    scale: 0.88;
+    rotate: 0deg;
+  }
+}
+
+@keyframes welcome-rise {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
+.welcome-card {
+  animation: welcome-card-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.welcome-rise {
+  animation: welcome-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-card,
+  .welcome-rise {
+    animation: none;
+  }
+}
