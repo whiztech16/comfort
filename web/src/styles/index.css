@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-    --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
 
   --color-powder: #dceaf7;
@@ -9,12 +9,18 @@
   --color-offwhite: #f7f9fb;
   --color-charcoal: #263746;
   --color-softgrey: #e6ebf0;
+
+  /* Logged-in app palette, sampled from the profile design */
+  --color-brand: #6f8cca;
+  --color-brand-deep: #4f6dab;
+  --color-navy: #1b3566;
 }
 
 html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
 /* Dove animation: components/messaging/DoveAnimation.tsx */
 @keyframes dove-fly {
   0% {
@@ -95,6 +101,7 @@ html {
     animation: none;
   }
 }
+
 /* Onboarding welcome screen entrance: components/onboarding/WelcomeScreen.tsx */
 @keyframes welcome-card-in {
   from {
@@ -124,5 +131,113 @@ html {
   .welcome-card,
   .welcome-rise {
     animation: none;
+  }
+}
+/* Liquid glass: bottom nav and the Home share bar */
+.liquid-glass {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.28),
+    rgba(255, 255, 255, 0.08)
+  );
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow:
+    0 10px 36px rgba(27, 53, 102, 0.14),
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 0 24px rgba(255, 255, 255, 0.35);
+}
+
+/* Rim light: bright at the top left and bottom right, faint in between */
+.liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.15) 35%,
+    rgba(255, 255, 255, 0.1) 65%,
+    rgba(255, 255, 255, 0.85)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Soft sheen across the top left */
+.liquid-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0) 38%
+  );
+  pointer-events: none;
+}
+
+/* The glass pill behind the active nav item */
+.liquid-pill {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.18)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.5),
+    0 4px 14px rgba(27, 53, 102, 0.12);
+}
+
+/* Browsers without backdrop blur, or people who asked for less transparency */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.92);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* Refraction for the bottom nav: Chrome, Edge and Android Chrome.
+   Safari and Firefox keep the blurred glass above. */
+@supports (not (-webkit-hyphens: none)) and (not (-moz-appearance: none)) {
+  .liquid-glass-nav {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.16),
+      rgba(255, 255, 255, 0.03)
+    );
+    -webkit-backdrop-filter: url(#comfort-liquid-nav) saturate(1.6) brightness(1.04);
+    backdrop-filter: url(#comfort-liquid-nav) saturate(1.6) brightness(1.04);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass-nav {
+    background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
