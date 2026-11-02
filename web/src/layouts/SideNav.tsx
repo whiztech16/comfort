@@ -11,7 +11,7 @@ export default function SideNav() {
         aria-label="Comfort home"
         className="px-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-deep"
       >
-        <img src={logo} alt="Comfort" className="h-7 w-auto" />
+        <img src={logo} alt="Comfort" className="h-7 w-auto brightness-0" />
       </Link>
 
       <nav aria-label="Primary" className="mt-9 flex flex-col gap-1">

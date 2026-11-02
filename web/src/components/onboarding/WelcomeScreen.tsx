@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
 import { PenLine, MailOpen, HeartHandshake } from "lucide-react";
 import shareImg from "../../assets/images/card1img.png";
 import receiveImg from "../../assets/images/card2img.png";
 import supportImg from "../../assets/images/card3img.png";
+import { PrimaryButton } from "../shared/PrimaryButton";
 
 const points = [
   { icon: PenLine, text: "Share your feelings, at your pace" },
@@ -16,7 +16,9 @@ const cardClass =
 
 const delay = (seconds: number) => ({ animationDelay: `${seconds}s` });
 
-export default function WelcomeScreen() {
+export default function WelcomeScreen({
+  onStart,
+}: Readonly<{ onStart: () => void }>) {
   return (
     <main className="flex min-h-svh justify-center bg-gradient-to-b from-[#dceaf7] via-[#eef4fa] to-white md:items-center">
       <div className="flex min-h-svh w-full max-w-[28rem] flex-col px-6 pb-7 pt-9 md:min-h-0 md:py-10">
@@ -81,12 +83,9 @@ export default function WelcomeScreen() {
 
         {/* Button: pinned to the bottom on phones */}
         <div className="welcome-rise mt-auto pt-7 md:mt-2" style={delay(1.05)}>
-          <Link
-            to="/home"
-            className="flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-b from-[#527a9f] to-[#3f5f80] text-[0.9rem] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_10px_24px_rgba(63,95,128,0.3)] transition hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4a6b8c]"
-          >
+          <PrimaryButton onClick={onStart} className="w-full">
             Let’s get started
-          </Link>
+          </PrimaryButton>
         </div>
       </div>
     </main>

@@ -8,15 +8,15 @@ const circle =
 
 export default function AppHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-white">
       <div className="mx-auto flex max-w-xl items-center justify-between gap-3 px-4 py-3 lg:max-w-none lg:px-8">
-        {/* Phone: logo */}
+        {/* Mobile only: logo (white PNG filtered dark so it shows on white header) */}
         <Link
           to="/home"
           aria-label="Comfort home"
           className="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-deep lg:hidden"
         >
-          <img src={logo} alt="Comfort" className="h-6 w-auto" />
+          <img src={logo} alt="Comfort" className="h-6 w-auto brightness-0" />
         </Link>
 
         {/* Desktop: search box */}
@@ -46,7 +46,6 @@ export default function AppHeader() {
             <Search aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </button>
           <span className="hidden lg:block">
-            {/* Temporary: the logged-in user's name will go here */}
             <Avatar name="Fortune" />
           </span>
         </div>

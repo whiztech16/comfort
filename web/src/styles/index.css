@@ -19,6 +19,7 @@
 html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  cursor: default;
 }
 
 /* Dove animation: components/messaging/DoveAnimation.tsx */

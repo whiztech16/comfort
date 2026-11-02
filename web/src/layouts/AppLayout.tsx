@@ -5,22 +5,25 @@ import SideNav from "./SideNav";
 
 export default function AppLayout() {
   return (
-    <div className="min-h-svh bg-white">
+    // Full viewport height flex column — keeps BottomNav pinned at the bottom
+    // without relying on `position:fixed` (which breaks when ancestors use
+    // backdrop-filter or transform on some mobile browsers).
+    <div className="flex h-dvh flex-col bg-white">
+      {/* Desktop sidebar — still uses its own fixed positioning */}
       <SideNav />
 
-      <div className="lg:pl-64">
+      {/* Content column: header + scrollable main */}
+      <div className="flex min-h-0 flex-1 flex-col lg:pl-64">
         <AppHeader />
-        <main className="mx-auto w-full max-w-xl px-4 pb-32 pt-5 lg:max-w-2xl lg:px-8 lg:pb-12 lg:pt-8">
-          <Outlet />
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-xl px-4 pb-6 pt-5 lg:max-w-2xl lg:px-8 lg:pt-8">
+            <Outlet />
+          </div>
         </main>
       </div>
 
-      {/* Soft blue glow behind the bottom nav, so the glass has colour to show (phones only) */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-44 bg-gradient-to-t from-brand/30 via-brand/10 to-transparent lg:hidden"
-      />
-
+      {/* Mobile bottom nav — sits in normal flow at the foot of the flex column */}
       <BottomNav />
     </div>
   );

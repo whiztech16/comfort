@@ -1,0 +1,2 @@
+export const actionButton =
+  "inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-full px-2.5 text-[0.8125rem] font-medium text-navy/60 transition hover:bg-[#f1f3fa] hover:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep sm:px-3";
