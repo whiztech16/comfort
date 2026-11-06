@@ -9,6 +9,7 @@ type ProfileStepProps = Readonly<{
   onChange: (patch: Partial<OnboardingData>) => void;
   onBack: () => void;
   onContinue: () => void;
+  onSkip: () => void;
 }>;
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -44,6 +45,7 @@ export default function ProfileStep({
   onChange,
   onBack,
   onContinue,
+  onSkip,
 }: ProfileStepProps) {
   const [submitted, setSubmitted] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -239,6 +241,13 @@ export default function ProfileStep({
           <PrimaryButton type="submit" className="w-full">
             Continue
           </PrimaryButton>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="mt-3 h-12 w-full rounded-full text-[0.9rem] font-medium text-charcoal/70 transition hover:text-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4a6b8c]"
+          >
+            Skip for now
+          </button>
         </div>
       </form>
     </OnboardingShell>

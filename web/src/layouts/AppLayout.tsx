@@ -1,30 +1,56 @@
-import { Outlet } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Outlet, useLocation, useMatch } from "react-router-dom";
 import AppHeader from "./AppHeader";
 import BottomNav from "./BottomNav";
 import SideNav from "./SideNav";
+import ToastProvider from "../context/ToastProvider";
 
 export default function AppLayout() {
-  return (
-    // Full viewport height flex column — keeps BottomNav pinned at the bottom
-    // without relying on `position:fixed` (which breaks when ancestors use
-    // backdrop-filter or transform on some mobile browsers).
-    <div className="flex h-dvh flex-col bg-white">
-      {/* Desktop sidebar — still uses its own fixed positioning */}
-      <SideNav />
+  const inConversation = useMatch("/comforts/conversations/:conversationId");
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
 
-      {/* Content column: header + scrollable main */}
-      <div className="flex min-h-0 flex-1 flex-col lg:pl-64">
+  // Always reset scroll to the top on page transition (e.g. clicking avatar)
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  return (
+    <ToastProvider>
+      {/* Full-screen column: header / scrollable content / bottom-nav */}
+      <div className="flex h-dvh flex-col bg-white">
+        {/* Desktop sidebar (absolutely positioned, doesn't affect column flow) */}
+        <SideNav />
+
+        {/* Top header — never scrolls away */}
         <AppHeader />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-xl px-4 pb-6 pt-5 lg:max-w-2xl lg:px-8 lg:pt-8">
+        {/* Scrollable content area or full-height chat container */}
+        <main
+          ref={mainRef}
+          className={`min-h-0 flex-1 lg:pl-64 ${
+            inConversation
+              ? "flex flex-col overflow-hidden"
+              : "overflow-y-auto"
+          }`}
+        >
+          <div
+            className={`mx-auto w-full max-w-xl px-4 lg:max-w-2xl lg:px-8 ${
+              inConversation
+                ? "flex h-full min-h-0 flex-1 flex-col pt-3 pb-2"
+                : "pt-5 pb-10 lg:pt-8 lg:pb-12"
+            }`}
+          >
             <Outlet />
           </div>
         </main>
-      </div>
 
-      {/* Mobile bottom nav — sits in normal flow at the foot of the flex column */}
-      <BottomNav />
-    </div>
+        {/* Bottom nav sits in normal flow — always visible above content */}
+        <BottomNav />
+      </div>
+    </ToastProvider>
   );
 }

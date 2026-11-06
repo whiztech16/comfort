@@ -10,10 +10,15 @@
   --color-charcoal: #263746;
   --color-softgrey: #e6ebf0;
 
-  /* Logged-in app palette, sampled from the profile design */
-  --color-brand: #6f8cca;
-  --color-brand-deep: #4f6dab;
-  --color-navy: #1b3566;
+  /* ── App brand palette ─────────────────────────────────────────────────────
+     Sampled from the design screenshots:
+       · navy   – the dark slate used for headings and body text  (#263746)
+       · brand-deep – the dark navy button / active accent        (#243447)
+       · brand  – a lighter tint for hover states and backgrounds (#3d546b)
+  ─────────────────────────────────────────────────────────────────────────── */
+  --color-brand: #3d546b;
+  --color-brand-deep: #243447;
+  --color-navy: #263746;
 }
 
 html {
@@ -140,16 +145,16 @@ html {
   isolation: isolate;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.28),
-    rgba(255, 255, 255, 0.08)
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.15)
   );
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
+  backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
   box-shadow:
-    0 10px 36px rgba(27, 53, 102, 0.14),
-    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    0 12px 40px rgba(36, 52, 71, 0.16),
+    inset 0 2px 2px rgba(255, 255, 255, 0.95),
     inset 0 -1px 1px rgba(255, 255, 255, 0.5),
-    inset 0 0 24px rgba(255, 255, 255, 0.35);
+    inset 0 0 32px rgba(255, 255, 255, 0.4);
 }
 
 /* Rim light: bright at the top left and bottom right, faint in between */
@@ -197,14 +202,14 @@ html {
 .liquid-pill {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.55),
-    rgba(255, 255, 255, 0.18)
+    rgba(255, 255, 255, 0.72),
+    rgba(255, 255, 255, 0.28)
   );
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.95),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.5),
-    0 4px 14px rgba(27, 53, 102, 0.12);
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.98),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.55),
+    0 4px 16px rgba(36, 52, 71, 0.14);
 }
 
 /* Browsers without backdrop blur, or people who asked for less transparency */
@@ -240,5 +245,30 @@ html {
     background: rgba(255, 255, 255, 0.94);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+/* Paper airplane while sending a Comfort */
+@keyframes plane-fly {
+  0% {
+    transform: translate(-28px, 16px) rotate(0deg);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translate(0, 0) rotate(-8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(28px, -16px) rotate(-14deg);
+    opacity: 0.2;
+  }
+}
+
+.plane-fly {
+  animation: plane-fly 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plane-fly {
+    animation: none;
   }
 }

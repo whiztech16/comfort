@@ -5,8 +5,7 @@ import type { Filter } from "../../components/posts/CategoryFilter";
 import PostCard from "../../components/posts/PostCard";
 import { samplePosts } from "../../lib/samplePosts";
 
-// Temporary: this will come from the logged-in user
-const currentUser = { name: "Fortune" };
+import { currentUser } from "../../lib/currentUser";
 
 function greeting() {
   const hour = new Date().getHours();

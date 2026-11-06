@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import GoogleIcon from "./Googleicon";
 
 const inputClass =
@@ -23,23 +23,6 @@ export default function SignupCard() {
       </p>
 
       <form className="mt-5 space-y-4" onSubmit={(e) => e.preventDefault()}>
-        {/* Name */}
-        <div>
-          <label htmlFor="name" className={labelClass}>
-            Name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            autoComplete="nickname"
-            placeholder="e.g. Alex Rivera"
-            required
-            maxLength={40}
-            className={inputClass}
-          />
-        </div>
-
         {/* Email */}
         <div>
           <label htmlFor="email" className={labelClass}>

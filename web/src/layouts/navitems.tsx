@@ -1,4 +1,4 @@
-import { House, Search, Plus, Mail, User, Settings } from "lucide-react";
+import { House, Mail, Plus, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItemType = {
@@ -8,12 +8,10 @@ export type NavItemType = {
   badge?: number;
 };
 
+// Order: Home, Comforts, [+ button], Profile
 export const navItems: NavItemType[] = [
-  { to: "/home",      label: "Home",     icon: House    },
-  { to: "/explore",   label: "Explore",  icon: Search   },
-  { to: "/posts/new", label: "Create",   icon: Plus     },
-  // The badge is a placeholder until the backend provides the real count
-  { to: "/inbox",     label: "Inbox",    icon: Mail,     badge: 2 },
-  { to: "/profile",   label: "Profile",  icon: User     },
-  { to: "/settings",  label: "Settings", icon: Settings },
+  { to: "/home",      label: "Home",     icon: House },
+  { to: "/comforts",  label: "Comforts", icon: Mail, badge: 2 },
+  { to: "/posts/new", label: "New post", icon: Plus },
+  { to: "/profile",   label: "Profile",  icon: User },
 ];

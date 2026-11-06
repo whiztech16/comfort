@@ -42,6 +42,7 @@ export default function OnboardingPage() {
         onChange={update}
         onBack={() => setStep("welcome")}
         onContinue={() => setStep("privacy")}
+        onSkip={() => setStep("privacy")}
       />
     );
   }
