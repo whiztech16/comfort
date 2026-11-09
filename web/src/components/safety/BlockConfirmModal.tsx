@@ -1,5 +1,6 @@
 import Modal from "../shared/Modal";
 import { useToast } from "../../hooks/useToast";
+import { blockUser } from "../../lib/sampleProfiles";
 
 type BlockConfirmModalProps = Readonly<{
   name: string | null; // null when the author is anonymous
@@ -13,10 +14,11 @@ export default function BlockConfirmModal({
   onConfirm,
 }: BlockConfirmModalProps) {
   const { showToast } = useToast();
-  const who = name ?? "this author";
+  const who = name ?? "Anonymous User";
+  const username = (name ?? "anonymous").toLowerCase().replace(/[^a-z0-9_]/g, "");
 
   function handleConfirm() {
-    // Later: tell the backend, which also applies the block to anonymous messages
+    blockUser(username, who);
     showToast("Blocked. You can undo this in Settings.");
     onConfirm?.();
     onClose();

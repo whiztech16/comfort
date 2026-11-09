@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import PhotoPicker from "../../components/profile/PhotoPicker";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import Avatar from "../../components/shared/Avatar";
 import { PrimaryButton } from "../../components/shared/PrimaryButton";
 import { useToast } from "../../hooks/useToast";
 import {
@@ -28,8 +29,6 @@ export default function EditProfilePage() {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const errors: { displayName?: string; username?: string } = {};
@@ -50,16 +49,10 @@ export default function EditProfilePage() {
     setSubmitted(true);
     if (errors.displayName || errors.username) return;
 
-    let photoUrl = profile.photoUrl;
-    if (photoFile) photoUrl = URL.createObjectURL(photoFile);
-    else if (photoRemoved) photoUrl = null;
-
-    // Later: upload the photo and save the profile on the backend
     updateMyProfile({
       displayName: displayName.trim(),
       username,
       bio: bio.trim(),
-      photoUrl,
     });
     showToast("Profile updated.");
     navigate("/profile");
@@ -67,6 +60,14 @@ export default function EditProfilePage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        to="/profile"
+        className="inline-flex items-center gap-2 text-[0.875rem] font-medium text-navy/70 transition hover:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+      >
+        <ArrowLeft aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+        Back to Profile
+      </Link>
+
       <section>
         <h1 className="text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.02em] text-navy">
           Edit profile
@@ -76,20 +77,18 @@ export default function EditProfilePage() {
         </p>
       </section>
 
-      <PhotoPicker
-        name={displayName}
-        currentUrl={profile.photoUrl}
-        file={photoFile}
-        removed={photoRemoved}
-        onFile={(file) => {
-          setPhotoFile(file);
-          setPhotoRemoved(false);
-        }}
-        onRemove={() => {
-          setPhotoFile(null);
-          setPhotoRemoved(true);
-        }}
-      />
+      {/* Initials Avatar Preview (no photo upload) */}
+      <div className="flex items-center gap-4 rounded-3xl border border-black/[0.06] bg-[#f8fafd] p-4">
+        <Avatar name={displayName || "A"} size="lg" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[1rem] font-semibold text-navy">
+            {displayName.trim() || "Your name"}
+          </p>
+          <p className="mt-0.5 text-[0.8125rem] text-navy/55">
+            Comfort uses initials to keep things calm and free of photo pressure.
+          </p>
+        </div>
+      </div>
 
       <form noValidate onSubmit={handleSubmit} className="space-y-5">
         <div>

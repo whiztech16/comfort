@@ -53,3 +53,47 @@ export function getProfileByUsername(username: string) {
 export function isUsernameTaken(username: string) {
   return others.some((profile) => profile.username === username);
 }
+
+export type MessagingPreference = "everyone" | "interacted" | "nobody";
+
+let messagingPreference: MessagingPreference = "everyone";
+
+export function getMessagingPreference(): MessagingPreference {
+  return messagingPreference;
+}
+
+export function setMessagingPreference(pref: MessagingPreference) {
+  messagingPreference = pref;
+  me.acceptsComforts = pref !== "nobody";
+}
+
+export interface BlockedUser {
+  id: string;
+  username: string;
+  displayName: string;
+  blockedAt: string;
+}
+
+const blockedUsers: BlockedUser[] = [];
+
+export function getBlockedUsers(): BlockedUser[] {
+  return [...blockedUsers];
+}
+
+export function blockUser(username: string, displayName: string) {
+  if (!blockedUsers.some((u) => u.username === username)) {
+    blockedUsers.push({
+      id: `b-${Date.now()}`,
+      username,
+      displayName,
+      blockedAt: "Just now",
+    });
+  }
+}
+
+export function unblockUser(username: string) {
+  const index = blockedUsers.findIndex((u) => u.username === username);
+  if (index !== -1) {
+    blockedUsers.splice(index, 1);
+  }
+}

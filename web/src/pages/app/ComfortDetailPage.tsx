@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, Send, CheckCheck, Clock } from "lucide-react";
+import EnvelopeReveal from "../../components/comforts/EnvelopeReveal";
 import { EmptyState } from "../../components/shared/States";
 import { PrimaryLink, PrimaryButton } from "../../components/shared/PrimaryButton";
 import { FileX } from "lucide-react";
@@ -23,12 +24,9 @@ export default function ComfortDetailPage() {
   const navigate = useNavigate();
   const comfort = getComfort(messageId);
 
-  // Mark as opened the first time
-  useEffect(() => {
-    if (comfort?.direction === "received") {
-      markOpened(messageId);
-    }
-  }, [messageId, comfort]);
+  const [hasOpened, setHasOpened] = useState(
+    Boolean(comfort && (comfort.direction === "sent" || comfort.firstOpenedAt !== null))
+  );
 
   if (!comfort) {
     return (
@@ -59,6 +57,29 @@ export default function ComfortDetailPage() {
       ? "Opened"
       : "Delivered"
     : null;
+
+  // First-time open envelope reveal experience
+  if (isReceived && !hasOpened) {
+    return (
+      <div>
+        <Link
+          to="/comforts"
+          state={{ tab: "received" }}
+          className="inline-flex items-center gap-2 text-[0.875rem] font-medium text-navy/70 transition hover:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+        >
+          <ArrowLeft aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+          Back to Comforts
+        </Link>
+        <EnvelopeReveal
+          senderName={personName}
+          onOpened={() => {
+            markOpened(messageId);
+            setHasOpened(true);
+          }}
+        />
+      </div>
+    );
+  }
 
   function handleReply() {
     if (isReceived) {
@@ -115,7 +136,10 @@ export default function ComfortDetailPage() {
           <div className="border-t border-black/[0.06] bg-[#f8f9fc] px-5 py-3">
             {statusText && statusIcon && (
               <div className="flex items-center gap-1.5">
-                {(() => { const StatusIcon = statusIcon; return <StatusIcon aria-hidden className="h-3.5 w-3.5 text-navy/40" strokeWidth={2} />; })()}
+                {(() => {
+                  const StatusIcon = statusIcon;
+                  return <StatusIcon aria-hidden className="h-3.5 w-3.5 text-navy/40" strokeWidth={2} />;
+                })()}
                 <span className="text-[0.8125rem] text-navy/50">{statusText}</span>
               </div>
             )}
@@ -131,8 +155,8 @@ export default function ComfortDetailPage() {
       {/* Actions for received comforts */}
       {isReceived && (
         <div className="space-y-4">
-          {/* Appreciation */}
-          {comfort.firstOpenedAt && !comfort.appreciation && (
+          {/* Appreciation Pills */}
+          {!comfort.appreciation && (
             <section className="space-y-2">
               <p className="text-[0.8125rem] font-medium text-navy/70">
                 Send a quick appreciation back:
@@ -153,6 +177,12 @@ export default function ComfortDetailPage() {
                 ))}
               </div>
             </section>
+          )}
+
+          {comfort.appreciation && (
+            <p className="rounded-2xl bg-[#eef1fa] px-4 py-3 text-[0.85rem] text-navy/70">
+              You replied with: <span className="font-semibold text-navy">&ldquo;{comfort.appreciation}&rdquo;</span>
+            </p>
           )}
 
           {/* Reply button — only if sender is not anonymous */}
@@ -178,4 +208,3 @@ export default function ComfortDetailPage() {
     </div>
   );
 }
-

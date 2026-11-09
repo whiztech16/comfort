@@ -14,38 +14,58 @@ import UserProfilePage from "../pages/app/UserProfilePage";
 import SettingsPage from "../pages/app/SettingsPage";
 import CreatePostPage from "../pages/app/CreatePostPage";
 import ComfortDetailPage from "../pages/app/ComfortDetailPage";
+import ChangePasswordPage from "../pages/app/ChangePasswordPage";
+import MessagingPreferencesPage from "../pages/app/MessagingPreferencesPage";
+import BlockedUsersPage from "../pages/app/BlockedUsersPage";
+import AuthGuard from "./AuthGuard";
+import OnboardingGuard from "./OnboardingGuard";
+import PublicAuthGuard from "./PublicAuthGuard";
 
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Public */}
+      {/* Public Landing */}
       <Route path="/" element={<LandingPage />} />
 
-      {/* Auth */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/onboarding" element={<OnboardingPage />} />
+      {/* Guest only: redirects to /home or /onboarding if already signed in */}
+      <Route element={<PublicAuthGuard />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+      </Route>
 
-      {/* Logged-in app: shares the header, sidebar and bottom nav */}
-      <Route element={<AppLayout />}>
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/posts/new" element={<CreatePostPage />} />
+      {/* Onboarding only: requires signed-in user who hasn't finished onboarding */}
+      <Route element={<OnboardingGuard />}>
+        <Route path="/onboarding" element={<OnboardingPage />} />
+      </Route>
 
-        <Route path="/send-comfort/:postId" element={<SendComfortPage />} />
-        <Route path="/send-comfort/to/:username" element={<SendComfortPage />} />
+      {/* Logged-in application: requires signed-in user with onboardingCompleted=true */}
+      <Route element={<AuthGuard />}>
+        <Route element={<AppLayout />}>
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/posts/new" element={<CreatePostPage />} />
 
-        <Route path="/comforts" element={<ComfortsPage />} />
-        <Route
-          path="/comforts/conversations/:conversationId"
-          element={<ConversationPage />}
-        />
-        <Route path="/comforts/:messageId" element={<ComfortDetailPage />} />
+          <Route path="/send-comfort/:postId" element={<SendComfortPage />} />
+          <Route path="/send-comfort/to/:username" element={<SendComfortPage />} />
 
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/profile/edit" element={<EditProfilePage />} />
-        <Route path="/u/:username" element={<UserProfilePage />} />
+          <Route path="/comforts" element={<ComfortsPage />} />
+          <Route
+            path="/comforts/conversations/:conversationId"
+            element={<ConversationPage />}
+          />
+          <Route path="/comforts/:messageId" element={<ComfortDetailPage />} />
 
-        <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/edit" element={<EditProfilePage />} />
+          <Route path="/u/:username" element={<UserProfilePage />} />
+
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/change-password" element={<ChangePasswordPage />} />
+          <Route
+            path="/settings/messaging-preferences"
+            element={<MessagingPreferencesPage />}
+          />
+          <Route path="/settings/blocked-users" element={<BlockedUsersPage />} />
+        </Route>
       </Route>
     </Routes>
   );

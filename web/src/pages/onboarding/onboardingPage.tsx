@@ -4,6 +4,8 @@ import WelcomeScreen from "../../components/onboarding/WelcomeScreen";
 import ProfileStep from "../../components/onboarding/ProfileStep";
 import PrivacyStep from "../../components/onboarding/PrivacyStep";
 import type { OnboardingData } from "../../types/onboarding";
+import { apiRequest, setUser } from "../../lib/api";
+import { useToast } from "../../hooks/useToast";
 
 type Step = "welcome" | "profile" | "privacy";
 
@@ -12,8 +14,8 @@ const initialData: OnboardingData = {
   username: "",
   bio: "",
   photo: null,
-  discoverable: false,
-  allowMessageRequests: false,
+  discoverable: true,
+  allowMessageRequests: true,
   receiveSupportiveMessages: true,
 };
 
@@ -21,6 +23,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>("welcome");
   const [data, setData] = useState<OnboardingData>(initialData);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -30,9 +33,26 @@ export default function OnboardingPage() {
     setData((previous) => ({ ...previous, ...patch }));
   }
 
-  function finish() {
-    // Later: send `data` to the backend so it is saved and enforced there
-    navigate("/home");
+  async function finish() {
+    try {
+      const res = await apiRequest<{ user: any }>("/api/v1/users/onboarding", {
+        method: "POST",
+        body: JSON.stringify({
+          displayName: data.displayName.trim() || "Friend",
+          username: data.username.trim(),
+          bio: data.bio?.trim() || undefined,
+          discoverable: data.discoverable,
+          allowMessageRequests: data.allowMessageRequests,
+        }),
+      });
+      if (res.data?.user) {
+        setUser(res.data.user);
+      }
+      showToast("Profile set up successfully 💙");
+      navigate("/home");
+    } catch (err: any) {
+      showToast(err.message || "Failed to complete onboarding.");
+    }
   }
 
   if (step === "profile") {

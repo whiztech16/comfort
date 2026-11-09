@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import { useState } from "react";
+import type { FormEvent } from "react";
 import OnboardingShell from "./OnboardingShell";
 import { PrimaryButton } from "../shared/PrimaryButton";
+import Avatar from "../shared/Avatar";
 import type { OnboardingData } from "../../types/onboarding";
 
 type ProfileStepProps = Readonly<{
@@ -12,9 +13,6 @@ type ProfileStepProps = Readonly<{
   onSkip: () => void;
 }>;
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
-
 const labelClass = "mb-2 block text-[0.8125rem] font-medium text-charcoal";
 
 const fieldBase =
@@ -24,9 +22,6 @@ const okBorder = "border-softgrey focus:border-calm focus:ring-calm/20";
 const badBorder = "border-[#b4443a] focus:ring-[#b4443a]/20";
 
 const errorClass = "mt-2 px-1 text-[0.8125rem] text-[#b4443a]";
-
-const photoButton =
-  "inline-flex h-9 cursor-pointer items-center rounded-full bg-white px-4 text-[0.8125rem] font-medium text-charcoal shadow-[0_1px_2px_rgba(38,55,70,0.08)] transition hover:bg-offwhite peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#4a6b8c]";
 
 function validate(data: OnboardingData) {
   const errors: { displayName?: string; username?: string } = {};
@@ -48,42 +43,10 @@ export default function ProfileStep({
   onSkip,
 }: ProfileStepProps) {
   const [submitted, setSubmitted] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  // Preview of the chosen photo. The temporary URL is released when it changes.
-  useEffect(() => {
-    if (!data.photo) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(data.photo);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [data.photo]);
 
   const errors = validate(data);
   const nameError = submitted ? errors.displayName : undefined;
   const usernameError = submitted ? errors.username : undefined;
-  const initial = (data.displayName.trim()[0] ?? "?").toUpperCase();
-
-  // These checks are a convenience only. The server must validate the file itself.
-  function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = ""; // lets the same file be chosen again
-    if (!file) return;
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setPhotoError("Please choose a JPG, PNG or WebP image.");
-      return;
-    }
-    if (file.size > MAX_PHOTO_BYTES) {
-      setPhotoError("That photo is over 5 MB. Please choose a smaller one.");
-      return;
-    }
-    setPhotoError(null);
-    onChange({ photo: file });
-  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,55 +62,16 @@ export default function ProfileStep({
       subtitle="Tell us how you’d like to appear. You can change this anytime."
       onBack={onBack}
     >
-      {/* Profile photo (optional) */}
-      <div className="mt-7 flex items-center gap-4">
-        {previewUrl ? (
-          <img
-            src={previewUrl}
-            alt="Your profile photo preview"
-            className="h-20 w-20 shrink-0 rounded-full object-cover ring-4 ring-white"
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#899bc7] text-3xl font-semibold text-white ring-4 ring-white"
-          >
-            {initial}
-          </span>
-        )}
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              id="photo"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handlePhoto}
-              className="peer sr-only"
-            />
-            <label htmlFor="photo" className={photoButton}>
-              {data.photo ? "Replace photo" : "Upload photo"}
-            </label>
-
-            {data.photo ? (
-              <button
-                type="button"
-                onClick={() => onChange({ photo: null })}
-                className="h-9 rounded-full px-3 text-[0.8125rem] font-medium text-charcoal/70 transition hover:text-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4a6b8c]"
-              >
-                Remove
-              </button>
-            ) : null}
-          </div>
-
-          <p className="mt-2 text-[0.8125rem] leading-snug text-charcoal/60">
-            Optional. We’ll use your first initial if you skip it.
+      {/* Profile avatar preview (initials only, no photo upload) */}
+      <div className="mt-7 flex items-center gap-4 rounded-2xl bg-white/70 p-4 shadow-sm border border-black/[0.04]">
+        <Avatar name={data.displayName || "A"} size="lg" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[1rem] font-semibold text-charcoal">
+            {data.displayName.trim() || "Your name"}
           </p>
-          {photoError ? (
-            <p role="alert" className={errorClass}>
-              {photoError}
-            </p>
-          ) : null}
+          <p className="mt-0.5 text-[0.8125rem] leading-snug text-charcoal/60">
+            Comfort uses initials to keep your identity quiet and pressure-free.
+          </p>
         </div>
       </div>
 
@@ -160,15 +84,20 @@ export default function ProfileStep({
             </label>
             <input
               id="display-name"
+              name="displayName"
               type="text"
               value={data.displayName}
-              onChange={(event) => onChange({ displayName: event.target.value })}
+              onChange={(event) =>
+                onChange({ displayName: event.target.value })
+              }
               maxLength={40}
-              autoComplete="nickname"
-              placeholder="How should we call you?"
+              placeholder="e.g. Alex Rivera"
+              autoComplete="name"
               aria-invalid={Boolean(nameError)}
               aria-describedby={nameError ? "display-name-error" : undefined}
-              className={`${fieldBase} h-12 rounded-full px-5 ${nameError ? badBorder : okBorder}`}
+              className={`${fieldBase} h-12 rounded-full px-5 ${
+                nameError ? badBorder : okBorder
+              }`}
             />
             {nameError ? (
               <p id="display-name-error" role="alert" className={errorClass}>
@@ -185,36 +114,43 @@ export default function ProfileStep({
             <div className="relative">
               <span
                 aria-hidden
-                className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[0.9rem] text-charcoal/50"
+                className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[0.9rem] text-charcoal/45"
               >
                 @
               </span>
               <input
                 id="username"
+                name="username"
                 type="text"
                 value={data.username}
                 onChange={(event) =>
                   onChange({
                     username: event.target.value
                       .toLowerCase()
-                      .replaceAll(/[^a-z0-9_]/g, ""),
+                      .replace(/[^a-z0-9_]/g, ""),
                   })
                 }
                 maxLength={20}
+                placeholder="alex"
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="yourname"
                 aria-invalid={Boolean(usernameError)}
                 aria-describedby={usernameError ? "username-error" : undefined}
-                className={`${fieldBase} h-12 rounded-full pl-9 pr-5 ${usernameError ? badBorder : okBorder}`}
+                className={`${fieldBase} h-12 rounded-full pl-9 pr-5 ${
+                  usernameError ? badBorder : okBorder
+                }`}
               />
             </div>
             {usernameError ? (
               <p id="username-error" role="alert" className={errorClass}>
                 {usernameError}
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-1 px-1 text-[0.775rem] text-charcoal/50">
+                Letters, numbers, and underscores only.
+              </p>
+            )}
           </div>
 
           {/* Bio */}
@@ -224,11 +160,12 @@ export default function ProfileStep({
             </label>
             <textarea
               id="bio"
+              name="bio"
               rows={3}
+              maxLength={160}
               value={data.bio}
               onChange={(event) => onChange({ bio: event.target.value })}
-              maxLength={160}
-              placeholder="A line about you"
+              placeholder="A line about what brings you here…"
               className={`${fieldBase} ${okBorder} resize-none rounded-2xl px-5 py-3`}
             />
             <p className="mt-1 px-1 text-right text-[0.75rem] text-charcoal/50">

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Modal from "../../components/shared/Modal";
 import { getMyProfile } from "../../lib/sampleProfiles";
+import { logoutApi } from "../../lib/api";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -254,14 +255,14 @@ export default function SettingsPage() {
         <Row
           icon={PenLine}
           label="Edit profile"
-          sub="Name, photo, bio"
+          sub="Name, username, bio"
           onClick={() => navigate("/profile/edit")}
         />
         <Row
           icon={Lock}
           label="Change password"
           sub="Update your login password"
-          onClick={() => {/* TODO */}}
+          onClick={() => navigate("/settings/change-password")}
         />
         <Row
           icon={LogOut}
@@ -288,13 +289,13 @@ export default function SettingsPage() {
           icon={MessageCircle}
           label="Messaging preferences"
           sub="Who can send you Comforts"
-          onClick={() => {/* TODO */}}
+          onClick={() => navigate("/settings/messaging-preferences")}
         />
         <Row
           icon={UserX}
           label="Blocked users"
           sub="Manage who you've blocked"
-          onClick={() => {/* TODO */}}
+          onClick={() => navigate("/settings/blocked-users")}
         />
       </Section>
 
@@ -334,7 +335,10 @@ export default function SettingsPage() {
       {showSignOut && (
         <SignOutModal
           onClose={() => setShowSignOut(false)}
-          onConfirm={() => navigate("/login")}
+          onConfirm={async () => {
+            await logoutApi();
+            navigate("/login");
+          }}
         />
       )}
       {showDelete && (
