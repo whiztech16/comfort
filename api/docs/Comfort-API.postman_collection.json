@@ -1,0 +1,286 @@
+{
+  "info": {
+    "name": "Comfort API",
+    "description": "Full auth flow for the Comfort API. Import this file into Postman.\n\nBase URL variable: {{baseUrl}} = http://localhost:3000\n\nThe collection auto-saves the access token and refresh cookie after login/register.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:3000" },
+    { "key": "accessToken",  "value": "" },
+    { "key": "email",        "value": "test@example.com" },
+    { "key": "password",     "value": "mypassword123" },
+    { "key": "displayName",  "value": "Test User" },
+    { "key": "username",     "value": "testuser01" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.test('Register succeeded', () => pm.expect(pm.response.code).to.equal(201));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Complete Onboarding",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/users/onboarding",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"{{displayName}}\",\n  \"username\": \"{{username}}\",\n  \"bio\": \"Finding peace and quiet here.\",\n  \"discoverableProfile\": true,\n  \"allowPrivateMessages\": \"allowed\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.test('Login succeeded', () => pm.expect(pm.response.code).to.equal(200));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Me (requires token)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/me",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.test('Token refreshed', () => pm.expect(pm.response.code).to.equal(200));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "description": "Uses the HttpOnly refresh cookie set automatically by the browser/Postman cookie jar."
+          }
+        },
+        {
+          "name": "List Sessions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/sessions",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/auth/change-password",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"mynewpassword456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/reset-password",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"PASTE_RESET_TOKEN_HERE\",\n  \"password\": \"mynewpassword456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Google Sign-In",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/google",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"PASTE_GOOGLE_ID_TOKEN_HERE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('accessToken', '');",
+                  "pm.test('Logged out', () => pm.expect(pm.response.code).to.equal(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/logout",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/users/me/profile",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Alex Rivera Updated\",\n  \"bio\": \"Updated bio: living mindfully.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Public Profile by Username",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/users/{{username}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/settings",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/settings",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notifyNewComforts\": true,\n  \"notifyNewMessages\": true,\n  \"notifyAppreciation\": true,\n  \"appearance\": \"dark\",\n  \"allowPrivateMessages\": \"requests_only\",\n  \"discoverableProfile\": true\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
