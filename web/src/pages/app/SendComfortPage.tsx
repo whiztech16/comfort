@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, FileX } from "lucide-react";
+import { ArrowLeft, FileX, Loader2 } from "lucide-react";
 import SendingAnimation from "../../components/messaging/SendingAnimation";
 import Segmented from "../../components/shared/Segmented";
 import Avatar from "../../components/shared/Avatar";
@@ -14,6 +14,8 @@ import { currentUser } from "../../lib/currentUser";
 import { addSentComfort } from "../../lib/sampleComforts";
 import { getPost } from "../../lib/samplePosts";
 import { getProfileByUsername } from "../../lib/sampleProfiles";
+import { apiRequest, getUser } from "../../lib/api";
+import { sendComfortApi } from "../../lib/comfortsApi";
 import type { Person } from "../../types/messaging";
 
 type Identity = "named" | "anonymous";
@@ -25,13 +27,45 @@ const MAX_LENGTH = 500;
 export default function SendComfortPage() {
   const { postId, username } = useParams();
   const navigate = useNavigate();
-  const post = postId ? getPost(postId) : undefined;
+  const samplePost = postId ? getPost(postId) : undefined;
   const profile = username ? getProfileByUsername(username) : undefined;
+
+  const [post, setPost] = useState<{ authorName: string | null; body: string } | null>(
+    samplePost ? { authorName: samplePost.authorName, body: samplePost.body } : null
+  );
+  const [loadingPost, setLoadingPost] = useState(Boolean(postId && !samplePost));
 
   const [body, setBody] = useState("");
   const [identity, setIdentity] = useState<Identity>("named");
   const [phase, setPhase] = useState<Phase>("idle");
   const [failed, setFailed] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // If postId is not found in samplePosts, attempt to fetch from backend API
+  useEffect(() => {
+    if (!postId || samplePost) return;
+    let active = true;
+    apiRequest<{ post: { author?: { displayName?: string | null }; content: string } | null }>(`/api/v1/posts/${postId}`)
+      .then((res) => {
+        if (!active) return;
+        const p = res.data?.post;
+        if (p) {
+          setPost({
+            authorName: p.author?.displayName ?? null,
+            body: p.content,
+          });
+        }
+      })
+      .catch(() => {
+        // Post not found or error
+      })
+      .finally(() => {
+        if (active) setLoadingPost(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [postId, samplePost]);
 
   // After "sent" the person lands on their Sent tab, or can tap to go sooner
   useEffect(() => {
@@ -42,6 +76,14 @@ export default function SendComfortPage() {
     );
     return () => window.clearTimeout(timer);
   }, [phase, navigate]);
+
+  if (loadingPost) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-deep" />
+      </div>
+    );
+  }
 
   // Who it goes to, and what it is about
   let recipient: Person | null = null;
@@ -84,8 +126,11 @@ export default function SendComfortPage() {
   const name = target.displayName ?? "the author";
   const backTo = !post && profile ? `/u/${profile.username}` : "/home";
 
+  const loggedInUser = getUser();
+  const currentUserName = loggedInUser?.profile?.displayName || currentUser.name;
+
   const identityOptions = [
-    { value: "named", label: `Send as ${currentUser.name}` },
+    { value: "named", label: `Send as ${currentUserName}` },
     { value: "anonymous", label: "Send anonymously" },
   ] as const;
 
@@ -95,16 +140,31 @@ export default function SendComfortPage() {
     if (!message || phase !== "idle") return;
 
     setFailed(false);
+    setErrorMessage(null);
     setPhase("sending");
     try {
-      // Later: await the backend. It only turns into "sent" after the backend
-      // confirms the message was saved, so a failed request never looks like success.
-      await new Promise((resolve) => window.setTimeout(resolve, 1600));
-      addSentComfort(target, message);
+      if (postId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId)) {
+        await sendComfortApi(postId, message, identity === "anonymous");
+      } else if (postId) {
+        // Fallback or attempt API, fallback to mock if mock post ID
+        try {
+          await sendComfortApi(postId, message, identity === "anonymous");
+        } catch (apiErr: unknown) {
+          if (postId.startsWith("p")) {
+            addSentComfort(target, message);
+          } else {
+            throw apiErr;
+          }
+        }
+      } else {
+        addSentComfort(target, message);
+      }
       setPhase("sent");
-    } catch {
+    } catch (err: unknown) {
       setPhase("idle");
       setFailed(true);
+      const errMsg = err instanceof Error ? err.message : "We couldn't send your Comfort. Please try again.";
+      setErrorMessage(errMsg);
     }
   }
 
@@ -176,7 +236,7 @@ export default function SendComfortPage() {
 
         {failed ? (
           <p role="alert" className="text-[0.8125rem] text-[#b4443a]">
-            We couldn’t send your Comfort. Please try again.
+            {errorMessage || "We couldn’t send your Comfort. Please try again."}
           </p>
         ) : null}
 
@@ -198,3 +258,5 @@ export default function SendComfortPage() {
     </div>
   );
 }
+
+

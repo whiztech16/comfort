@@ -9,15 +9,18 @@
 ## 📋 Recommended Testing Sequence in Postman
 
 ```
-1. GET  /api/health                       (Verify API is up)
-2. POST /api/v1/auth/register             (Create user with email & password)
-3. POST /api/v1/users/onboarding          (Submit display name, username, bio, privacy)
-4. GET  /api/v1/auth/me                   (Verify onboardingCompleted is true)
-5. GET  /api/v1/auth/sessions             (View active session)
-6. PATCH /api/v1/auth/change-password     (Change password — accepts PATCH or POST)
-7. POST /api/v1/auth/refresh              (Rotate refresh token via cookie)
-8. POST /api/v1/auth/logout               (Invalidate session and clear cookie)
-9. POST /api/v1/auth/login                (Sign back in with new password)
+1.  GET    /api/health                       (Verify API is up)
+2.  POST   /api/v1/auth/register             (Create user with email & password)
+3.  POST   /api/v1/users/onboarding          (Submit display name, username, bio, privacy)
+4.  GET    /api/v1/auth/me                   (Verify onboardingCompleted is true)
+5.  POST   /api/v1/blocks                    (Block target user by username)
+6.  GET    /api/v1/blocks                    (List blocked users & auto-save blockId)
+7.  DELETE /api/v1/blocks/:id                (Unblock user using saved blockId)
+8.  POST   /api/v1/comforts/:id/block        (Block comfort sender directly from message)
+9.  PATCH  /api/v1/auth/change-password     (Change password)
+10. POST   /api/v1/auth/refresh              (Rotate refresh token via cookie)
+11. POST   /api/v1/auth/logout               (Invalidate session and clear cookie)
+12. POST   /api/v1/auth/login                (Sign back in)
 ```
 
 ---
@@ -553,6 +556,48 @@ Retrieves another user's public profile (or own profile).
 
 ---
 
+### `DELETE /api/v1/users/me`
+Permanently deletes the authenticated user's account. Requires password or Google ID token re-verification to prevent unauthorized deletion.
+- **Auth:** Required (`Bearer <accessToken>`)
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Request Body (Password accounts):**
+```json
+{
+  "password": "mypassword123"
+}
+```
+- **Request Body (Google accounts):**
+```json
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIs..."
+}
+```
+- **What happens on deletion:**
+  - Anonymizes / soft-deletes user record in database (`status = 'deleted'`).
+  - Hides all author posts (`deletedAt = now()`).
+  - Purges personal profile, keys, notifications, and reset tokens.
+  - Revokes all refresh tokens and clears the `comfort_rt` HttpOnly cookie.
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "Account deleted",
+  "data": {}
+}
+```
+- **Error Response — Incorrect Password (`400 Bad Request`):**
+```json
+{
+  "success": false,
+  "code": "INVALID_CURRENT_PASSWORD",
+  "message": "Current password is incorrect"
+}
+```
+
+---
+
 ## 4. User Settings
 
 ### `GET /api/v1/settings` *(or `GET /api/v1/users/me/settings`)*
@@ -620,7 +665,390 @@ Partially updates the user's settings.
 
 ---
 
-## 5. Postman Import File
+## 5. Posts & Community Feed Flow
+
+Comfort posts are categorized supportive or reflective messages shared with the community. You can post either using your public identity or completely anonymously.
+
+---
+
+### `GET /api/v1/categories`
+Retrieves available categories. You will need a category `id` (UUID) when creating a post.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "categories": [
+      {
+        "id": "c1f727c6-218f-4cf6-9ebc-2794eb8489a2",
+        "name": "Encouragement",
+        "slug": "encouragement",
+        "description": "Uplifting messages and gentle reminders."
+      },
+      {
+        "id": "d2f838d7-3290-5dg7-0fcd-3805fc9590b3",
+        "name": "Everyday Thoughts",
+        "slug": "everyday-thoughts",
+        "description": "Quiet moments and daily reflections."
+      }
+    ]
+  }
+}
+```
+
+---
+
+### `POST /api/v1/posts`
+Creates a new post in the feed.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 20 posts / hour per user
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "content": "Some days are harder than others, but remember that taking small steps forward is still progress. Be gentle with yourself today. 💙",
+  "categoryId": "c1f727c6-218f-4cf6-9ebc-2794eb8489a2",
+  "isAnonymous": false
+}
+```
+> **Rules:**
+> - `content`: 1 to 2,000 characters. No control or unprintable characters.
+> - `categoryId`: Valid UUID of an active category (from `GET /api/v1/categories`).
+> - `isAnonymous`: Boolean. If `true`, your name and profile are hidden in public feeds.
+- **Success Response (`201 Created`):**
+```json
+{
+  "success": true,
+  "message": "Post created",
+  "data": {
+    "post": {
+      "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "content": "Some days are harder than others, but remember that taking small steps forward is still progress. Be gentle with yourself today. 💙",
+      "createdAt": "2026-11-10T12:00:00.000Z",
+      "isMine": true,
+      "category": {
+        "id": "c1f727c6-218f-4cf6-9ebc-2794eb8489a2",
+        "name": "Encouragement",
+        "slug": "encouragement"
+      },
+      "author": {
+        "displayName": "Alex Rivera",
+        "username": "alexrivera",
+        "avatarUrl": null,
+        "isAnonymous": false
+      }
+    }
+  }
+}
+```
+
+---
+
+### `GET /api/v1/posts` (View Feed)
+Retrieves the community feed ordered from newest to oldest. Posts from blocked users and inactive accounts are automatically excluded.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 200 requests / 15 minutes per user
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **Query Parameters (optional):**
+  - `limit`: Integer (1 to 50, default `20`)
+  - `cursor`: Opaque pagination string returned from previous page (`nextCursor`)
+  - `category`: Category slug filter (e.g. `encouragement`, `everyday-thoughts`)
+- **Example URL:** `http://localhost:3000/api/v1/posts?limit=20&category=encouragement`
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "items": [
+      {
+        "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        "content": "Some days are harder than others...",
+        "createdAt": "2026-11-10T12:00:00.000Z",
+        "isMine": true,
+        "category": {
+          "id": "c1f727c6-218f-4cf6-9ebc-2794eb8489a2",
+          "name": "Encouragement",
+          "slug": "encouragement"
+        },
+        "author": {
+          "displayName": "Alex Rivera",
+          "username": "alexrivera",
+          "avatarUrl": null,
+          "isAnonymous": false
+        }
+      }
+    ],
+    "nextCursor": "eyJ0cyI6IjIwMjYtMTEtM...",
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### `GET /api/v1/posts/:id` (View Single Post)
+Retrieves full details of a specific post.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **URL Parameter:**
+  - `:id` — Post UUID
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "post": {
+      "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "content": "Some days are harder than others...",
+      "createdAt": "2026-11-10T12:00:00.000Z",
+      "isMine": true,
+      "category": {
+        "id": "c1f727c6-218f-4cf6-9ebc-2794eb8489a2",
+        "name": "Encouragement",
+        "slug": "encouragement"
+      },
+      "author": {
+        "displayName": "Alex Rivera",
+        "username": "alexrivera",
+        "avatarUrl": null,
+        "isAnonymous": false
+      }
+    }
+  }
+}
+```
+
+---
+
+### `GET /api/v1/users/me/posts` (View My Posts)
+Lists all posts written by the logged-in user, including anonymous posts.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **Query Parameters (optional):**
+  - `limit`: Integer (1 to 50, default `20`)
+  - `cursor`: Pagination cursor
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "items": [ ... ],
+    "nextCursor": null,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### `GET /api/v1/users/:username/posts` (View User Posts)
+Lists named public posts by a specific user. Anonymous posts never appear here.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **URL Parameter:**
+  - `:username` — Target user's username
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "items": [ ... ],
+    "nextCursor": null,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### `DELETE /api/v1/posts/:id`
+Soft-deletes a post authored by the logged-in user.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 30 deletes / hour
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **URL Parameter:**
+  - `:id` — Post UUID
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "Post deleted",
+  "data": {}
+}
+```
+
+---
+
+## 6. Blocks Flow
+
+The blocking system enforces mutual invisibility:
+- A blocked user's posts disappear from your feed.
+- Your posts disappear from the blocked user's feed.
+- Neither user can send comforts to the other's posts.
+- Blocking an anonymous comfort sender blocks their underlying account **without exposing their identity** (listed as `Anonymous` with null username).
+
+---
+
+### `POST /api/v1/blocks`
+Blocks a user by their public username.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 30 requests / hour per user
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "username": "jane_doe"
+}
+```
+- **Success Response (`201 Created`):**
+```json
+{
+  "success": true,
+  "message": "User blocked",
+  "data": {
+    "blocked": true
+  }
+}
+```
+- **Error Response — Self-Block (`422 Unprocessable Entity`):**
+```json
+{
+  "success": false,
+  "code": "VALIDATION_ERROR",
+  "message": "Invalid request",
+  "errors": [
+    {
+      "path": "username",
+      "message": "You can't block yourself"
+    }
+  ]
+}
+```
+- **Error Response — Target Not Found or Non-Discoverable (`404 Not Found`):**
+```json
+{
+  "success": false,
+  "code": "NOT_FOUND",
+  "message": "User not found"
+}
+```
+
+---
+
+### `GET /api/v1/blocks`
+Lists all users you currently have blocked (ordered newest first, limit 200).
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 120 requests / 15 minutes per user
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "items": [
+      {
+        "id": "e4a7a8d5-397a-4ecb-9d47-6d601b38cf4e",
+        "user": {
+          "displayName": "Jane Doe",
+          "username": "jane_doe",
+          "avatarUrl": null,
+          "isAnonymous": false
+        },
+        "createdAt": "2026-11-10T11:00:00.000Z"
+      },
+      {
+        "id": "f5b8b9e6-408b-5fdc-ae58-7e712c49da5f",
+        "user": {
+          "displayName": "Anonymous",
+          "username": null,
+          "avatarUrl": null,
+          "isAnonymous": true
+        },
+        "createdAt": "2026-11-10T10:45:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### `DELETE /api/v1/blocks/:id`
+Unblocks a user using the block entry UUID (obtained from `GET /api/v1/blocks`).
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 30 requests / hour per user
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **URL Parameter:**
+  - `:id` — The UUID of the block record (e.g. `e4a7a8d5-397a-4ecb-9d47-6d601b38cf4e`)
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "User unblocked",
+  "data": {}
+}
+```
+- **Error Response — Block Not Found (`404 Not Found`):**
+```json
+{
+  "success": false,
+  "code": "NOT_FOUND",
+  "message": "Block not found"
+}
+```
+
+---
+
+### `POST /api/v1/comforts/:id/block`
+Blocks the sender of a received comfort directly from the comfort message itself. If the comfort was anonymous, this blocks the author from ever contacting you or seeing your posts again while preserving their anonymity.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 30 requests / hour per user
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **URL Parameter:**
+  - `:id` — The UUID of the received comfort message
+- **Success Response (`201 Created`):**
+```json
+{
+  "success": true,
+  "message": "Sender blocked",
+  "data": {
+    "blocked": true
+  }
+}
+```
+- **Error Response — Comfort Not Found or Viewer is Not Recipient (`404 Not Found`):**
+```json
+{
+  "success": false,
+  "code": "NOT_FOUND",
+  "message": "Comfort not found"
+}
+```
+
+---
+
+## 7. Postman Import File
 
 A ready-to-import Postman collection is located at:  
 👉 [`api/docs/Comfort-API.postman_collection.json`](file:///c:/Users/ADMIN/Desktop/comfort/api/docs/Comfort-API.postman_collection.json)
@@ -629,5 +1057,5 @@ A ready-to-import Postman collection is located at:
 1. Open Postman.
 2. Click **Import** (top left).
 3. Drag and drop `api/docs/Comfort-API.postman_collection.json`.
-4. Variables `{{baseUrl}}` and `{{accessToken}}` are managed automatically. Running **Register** or **Login** auto-saves the token for all subsequent protected requests.
+4. Variables `{{baseUrl}}`, `{{accessToken}}`, `{{blockId}}`, `{{targetUsername}}`, `{{comfortId}}`, and `{{postId}}` are managed automatically. Running **Register** or **Login** auto-saves the token for all subsequent protected requests.
 

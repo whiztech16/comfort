@@ -1,35 +1,18 @@
 import type { RequestHandler } from "express";
-import { env } from "../config/env.js";
+import { env } from "../../src/config/env";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+// Compare the origin form only, so a trailing slash in .env is harmless
 const allowedOrigin = new URL(env.FRONTEND_URL).origin;
 
 export const originGuard: RequestHandler = (req, res, next) => {
   if (SAFE_METHODS.has(req.method)) return next();
-
-  const origin = req.headers.origin;
-
-  // Browser requests that send an Origin header must match FRONTEND_URL
-  if (origin) {
-    if (origin === allowedOrigin) return next();
-
-    return res.status(403).json({
-      success: false,
-      code: "CSRF_INVALID",
-      message: "Request origin not allowed",
-      requestId: req.requestId,
-    });
-  }
-
-  // Sec-Fetch-Site check for modern browsers without explicit Origin
-  if (req.headers["sec-fetch-site"] === "cross-site") {
-    return res.status(403).json({
-      success: false,
-      code: "CSRF_INVALID",
-      message: "Cross-site request blocked",
-      requestId: req.requestId,
-    });
-  }
-
-  return next();
+  // Writes must come from our frontend; a missing Origin is rejected too
+  if (req.get("origin") === allowedOrigin) return next();
+  res.status(403).json({
+    success: false,
+    code: "ORIGIN_NOT_ALLOWED",
+    message: "Origin not allowed",
+    requestId: req.requestId,
+  });
 };

@@ -34,7 +34,6 @@ authRouter.post("/logout", logout);
 authRouter.get("/me", authenticate, me);
 authRouter.get("/sessions", authenticate, listSessions);
 authRouter.delete("/sessions/:id", authenticate, revokeSession);
-authRouter.post("/change-password", authenticate, sensitiveLimiter, changePassword);
 authRouter.patch("/change-password", authenticate, sensitiveLimiter, changePassword);
 authRouter.post("/forgot-password", forgotLimiter, forgotPassword);
 authRouter.post("/reset-password", resetLimiter, resetPassword);

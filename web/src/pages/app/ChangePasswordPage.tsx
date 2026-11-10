@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Lock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { PrimaryButton } from "../../components/shared/PrimaryButton";
 import { useToast } from "../../hooks/useToast";
 import { apiRequest, setAccessToken } from "../../lib/api";

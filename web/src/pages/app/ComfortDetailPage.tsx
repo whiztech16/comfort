@@ -1,32 +1,72 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Send, CheckCheck, Clock } from "lucide-react";
+import {
+  ArrowLeft,
+  MessageCircle,
+  Send,
+  CheckCheck,
+  Clock,
+  FileX,
+  Loader2,
+} from "lucide-react";
 import EnvelopeReveal from "../../components/comforts/EnvelopeReveal";
 import { EmptyState } from "../../components/shared/States";
 import { PrimaryLink, PrimaryButton } from "../../components/shared/PrimaryButton";
-import { FileX } from "lucide-react";
 import {
   getComfort,
   markOpened,
   startConversation,
   setAppreciation,
 } from "../../lib/sampleComforts";
-
-const appreciationOptions = [
-  "Thank you 💙",
-  "This helped",
-  "I needed this",
-  "Means a lot",
-] as const;
+import {
+  getComfortApi,
+  openComfortApi,
+  appreciateComfortApi,
+} from "../../lib/comfortsApi";
+import { appreciations } from "../../types/messaging";
+import type { Appreciation, Comfort } from "../../types/messaging";
 
 export default function ComfortDetailPage() {
   const { messageId = "" } = useParams();
   const navigate = useNavigate();
-  const comfort = getComfort(messageId);
 
+  const sampleComfort = getComfort(messageId);
+  const [comfort, setComfort] = useState<Comfort | null>(sampleComfort ?? null);
+  const [loading, setLoading] = useState(Boolean(!sampleComfort));
   const [hasOpened, setHasOpened] = useState(
-    Boolean(comfort && (comfort.direction === "sent" || comfort.firstOpenedAt !== null))
+    Boolean(sampleComfort && (sampleComfort.direction === "sent" || sampleComfort.firstOpenedAt !== null))
   );
+  const [submittingAppreciation, setSubmittingAppreciation] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getComfortApi(messageId)
+      .then((data) => {
+        if (!active) return;
+        setComfort(data);
+        if (data.direction === "sent" || data.firstOpenedAt !== null) {
+          setHasOpened(true);
+        }
+      })
+      .catch(() => {
+        // Fallback to sample if exists
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [messageId]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-deep" />
+      </div>
+    );
+  }
 
   if (!comfort) {
     return (
@@ -58,6 +98,48 @@ export default function ComfortDetailPage() {
       : "Delivered"
     : null;
 
+  async function handleOpen() {
+    try {
+      if (/^[0-9a-f-]{36}$/i.test(messageId)) {
+        const opened = await openComfortApi(messageId);
+        setComfort(opened);
+      } else {
+        markOpened(messageId);
+        setComfort((prev) =>
+          prev && prev.direction === "received"
+            ? { ...prev, firstOpenedAt: new Date().toISOString() }
+            : prev
+        );
+      }
+    } catch (err) {
+      console.error("Failed to mark comfort opened", err);
+    } finally {
+      setHasOpened(true);
+    }
+  }
+
+  async function handleAppreciate(opt: Appreciation) {
+    if (submittingAppreciation) return;
+    setSubmittingAppreciation(true);
+    try {
+      if (/^[0-9a-f-]{36}$/i.test(messageId)) {
+        const updated = await appreciateComfortApi(messageId, opt);
+        setComfort(updated);
+      } else {
+        setAppreciation(messageId, opt);
+        setComfort((prev) =>
+          prev && prev.direction === "received"
+            ? { ...prev, appreciation: opt }
+            : prev
+        );
+      }
+    } catch (err) {
+      console.error("Failed to send appreciation", err);
+    } finally {
+      setSubmittingAppreciation(false);
+    }
+  }
+
   // First-time open envelope reveal experience
   if (isReceived && !hasOpened) {
     return (
@@ -72,10 +154,7 @@ export default function ComfortDetailPage() {
         </Link>
         <EnvelopeReveal
           senderName={personName}
-          onOpened={() => {
-            markOpened(messageId);
-            setHasOpened(true);
-          }}
+          onOpened={handleOpen}
         />
       </div>
     );
@@ -162,15 +241,13 @@ export default function ComfortDetailPage() {
                 Send a quick appreciation back:
               </p>
               <div className="flex flex-wrap gap-2">
-                {appreciationOptions.map((opt) => (
+                {appreciations.map((opt) => (
                   <button
                     key={opt}
                     type="button"
-                    onClick={() => {
-                      setAppreciation(messageId, opt);
-                      navigate("/comforts");
-                    }}
-                    className="rounded-full border border-black/[0.08] bg-white px-4 py-2 text-[0.875rem] font-medium text-navy transition hover:bg-[#eef1fa] hover:border-brand-deep/30 focus-visible:outline-2 focus-visible:outline-brand-deep"
+                    disabled={submittingAppreciation}
+                    onClick={() => handleAppreciate(opt)}
+                    className="rounded-full border border-black/[0.08] bg-white px-4 py-2 text-[0.875rem] font-medium text-navy transition hover:bg-[#eef1fa] hover:border-brand-deep/30 focus-visible:outline-2 focus-visible:outline-brand-deep disabled:opacity-50"
                   >
                     {opt}
                   </button>

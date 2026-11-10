@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Lock, Mail, MessagesSquare, Send } from "lucide-react";
+import { Lock, Mail, MessagesSquare, Send, Loader2 } from "lucide-react";
 import ComfortRow from "../../components/comforts/ComfortRow";
 import ConversationRow from "../../components/comforts/ConversationRow";
 import { EmptyState } from "../../components/shared/States";
@@ -10,6 +10,11 @@ import {
   listReceived,
   listSent,
 } from "../../lib/sampleComforts";
+import {
+  listReceivedComfortsApi,
+  listSentComfortsApi,
+} from "../../lib/comfortsApi";
+import type { ReceivedComfort, SentComfort } from "../../types/messaging";
 
 const tabs = [
   { id: "received", label: "Received" },
@@ -24,9 +29,44 @@ export default function ComfortsPage() {
   const startTab = (location.state as { tab?: Tab } | null)?.tab ?? "received";
   const [tab, setTab] = useState<Tab>(startTab);
 
-  const received = listReceived();
-  const sent = listSent();
+  const [received, setReceived] = useState<ReceivedComfort[]>([]);
+  const [sent, setSent] = useState<SentComfort[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const conversations = listConversations();
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.allSettled([listReceivedComfortsApi(), listSentComfortsApi()])
+      .then(([recResult, sentResult]) => {
+        if (!active) return;
+        if (recResult.status === "fulfilled") {
+          setReceived(recResult.value.items);
+        } else {
+          // Fall back to sample data if offline or unauthorized
+          setReceived(listReceived());
+        }
+
+        if (sentResult.status === "fulfilled") {
+          setSent(sentResult.value.items);
+        } else {
+          setSent(listSent());
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setReceived(listReceived());
+        setSent(listSent());
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   let panel;
   if (tab === "received") {
@@ -117,7 +157,13 @@ export default function ComfortsPage() {
       </div>
 
       <div id="comforts-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
-        {panel}
+        {loading ? (
+          <div className="flex min-h-[30vh] items-center justify-center">
+            <Loader2 className="h-7 w-7 animate-spin text-brand-deep" />
+          </div>
+        ) : (
+          panel
+        )}
       </div>
 
       <div className="flex items-start gap-3 rounded-2xl bg-[#f1f3fa] p-4">

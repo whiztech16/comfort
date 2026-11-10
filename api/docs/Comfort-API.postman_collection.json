@@ -5,12 +5,17 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl",      "value": "http://localhost:3000" },
-    { "key": "accessToken",  "value": "" },
-    { "key": "email",        "value": "test@example.com" },
-    { "key": "password",     "value": "mypassword123" },
-    { "key": "displayName",  "value": "Test User" },
-    { "key": "username",     "value": "testuser01" }
+    { "key": "baseUrl",        "value": "http://localhost:3000" },
+    { "key": "accessToken",    "value": "" },
+    { "key": "email",          "value": "test@example.com" },
+    { "key": "password",       "value": "mypassword123" },
+    { "key": "displayName",    "value": "Test User" },
+    { "key": "username",       "value": "testuser01" },
+    { "key": "targetUsername", "value": "testuser02" },
+    { "key": "blockId",        "value": "" },
+    { "key": "comfortId",      "value": "" },
+    { "key": "postId",         "value": "" },
+    { "key": "categoryId",     "value": "" }
   ],
   "item": [
     {
@@ -248,6 +253,21 @@
               { "key": "Authorization", "value": "Bearer {{accessToken}}" }
             ]
           }
+        },
+        {
+          "name": "Delete My Account",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/users/me",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
         }
       ]
     },
@@ -276,6 +296,359 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"notifyNewComforts\": true,\n  \"notifyNewMessages\": true,\n  \"notifyAppreciation\": true,\n  \"appearance\": \"dark\",\n  \"allowPrivateMessages\": \"requests_only\",\n  \"discoverableProfile\": true\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "List Categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.categories && json.data.categories.length > 0) {",
+                  "  pm.collectionVariables.set('categoryId', json.data.categories[0].id);",
+                  "  pm.test('Saved categoryId for posting', () => pm.expect(json.data.categories[0].id).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/categories",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Lists post categories. The test script automatically saves the first categoryId into {{categoryId}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "Create Post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('postId', json.data.post.id);",
+                  "  pm.test('Post created and postId saved', () => pm.expect(json.data.post.id).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/posts",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Some days are harder than others, but remember that taking small steps forward is still progress. Be gentle with yourself today. 💙\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"isAnonymous\": false\n}"
+            },
+            "description": "Creates a public post under a specific category. Can be named or anonymous."
+          }
+        },
+        {
+          "name": "Get Feed (View Posts)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.items && json.data.items.length > 0) {",
+                  "  pm.collectionVariables.set('postId', json.data.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/posts?limit=20",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Retrieves the global community feed. Automatically filters out posts from blocked users and posts with inactive accounts."
+          }
+        },
+        {
+          "name": "Get Single Post by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/posts/{{postId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Gets full details of a specific post by its UUID."
+          }
+        },
+        {
+          "name": "Get My Posts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/users/me/posts?limit=20",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Retrieves all posts created by the authenticated user (including anonymous posts)."
+          }
+        },
+        {
+          "name": "Get User Posts by Username",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/users/{{username}}/posts?limit=20",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Retrieves named public posts created by a specific user. Anonymous posts are excluded."
+          }
+        },
+        {
+          "name": "Delete My Post",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/posts/{{postId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Soft-deletes your own post."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blocks",
+      "item": [
+        {
+          "name": "Block User by Username",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.expect(pm.response.code).to.equal(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('User blocked is true', () => pm.expect(json.data.blocked).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/blocks",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{targetUsername}}\"\n}"
+            },
+            "description": "Blocks a user by their public username. Once blocked, posts and comforts between both users are mutually invisible."
+          }
+        },
+        {
+          "name": "List Blocked Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.items && json.data.items.length > 0) {",
+                  "  pm.collectionVariables.set('blockId', json.data.items[0].id);",
+                  "  pm.test('Saved blockId for unblocking', () => pm.expect(json.data.items[0].id).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/blocks",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Retrieves the list of users you have blocked. If blocked anonymously via a comfort, their identity remains masked as Anonymous."
+          }
+        },
+        {
+          "name": "Unblock User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.expect(pm.response.code).to.equal(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/blocks/{{blockId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Unblocks a user using the block ID returned by the List Blocked Users endpoint."
+          }
+        },
+        {
+          "name": "Block Comfort Sender",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.expect(pm.response.code).to.equal(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Sender blocked is true', () => pm.expect(json.data.blocked).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/comforts/{{comfortId}}/block",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Blocks the sender of a received comfort without revealing their identity if they sent it anonymously."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comforts",
+      "item": [
+        {
+          "name": "Send Comfort",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('comfortId', json.data.comfort.id);",
+                  "  pm.test('Comfort created and ID saved', () => pm.expect(json.data.comfort.id).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/comforts",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"{{postId}}\",\n  \"content\": \"Hey, you are doing better than you think. Keep going! 💙\",\n  \"isAnonymous\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "List Received Comforts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.items && json.data.items.length > 0) {",
+                  "  pm.collectionVariables.set('comfortId', json.data.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/comforts/received?limit=20",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "List Sent Comforts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/comforts/sent?limit=20",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Get Comfort by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/comforts/{{comfortId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Open Comfort (Reveal Sealed Letter)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.expect(pm.response.code).to.equal(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Comfort content decrypted', () => pm.expect(json.data.comfort.content).to.not.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/comforts/{{comfortId}}/open",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Send Appreciation",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/comforts/{{comfortId}}/appreciation",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"this_helped\"\n}"
             }
           }
         }

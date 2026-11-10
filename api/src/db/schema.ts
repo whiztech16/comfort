@@ -352,6 +352,7 @@ export const blocks = pgTable(
     blockerId: uuid("blocker_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+          isAnonymous: boolean("is_anonymous").notNull().default(false),
     blockedId: uuid("blocked_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

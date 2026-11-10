@@ -14,6 +14,7 @@ const others: Profile[] = [
   {
     username: "maya",
     displayName: "Maya",
+    email: "maya@example.com",
     bio: "Small steps, big changes.",
     photoUrl: null,
     acceptsComforts: true,
@@ -21,6 +22,7 @@ const others: Profile[] = [
   {
     username: "jay",
     displayName: "Jay",
+    email: "jay@example.com",
     bio: "Faith, family and good music.",
     photoUrl: null,
     acceptsComforts: false, // shows what "where permitted" looks like
@@ -28,6 +30,7 @@ const others: Profile[] = [
   {
     username: "zoe",
     displayName: "Zoe",
+    email: "zoe@example.com",
     bio: "Reader. Walker. Always rooting for you.",
     photoUrl: null,
     acceptsComforts: true,
