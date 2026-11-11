@@ -19,7 +19,9 @@ import { postsRouter } from './modules/posts/posts.routes';
 import { comfortsRouter } from './modules/comforts/comforts.routes';
 import { blocksRouter } from './modules/blocks/blocks.routes';
 import { reportsRouter } from './modules/reports/reports.routes';
-
+import { keysRouter } from './modules/keys/keys.routes.js';
+import { conversationsRouter } from './modules/conversations/conversations.routes.js';
+import { notificationsRouter } from './modules/notifications/notifications.routes.js';
 export function createApp() {
   const app = express();
 
@@ -67,7 +69,9 @@ export function createApp() {
   app.use('/api/v1/comforts', comfortsRouter);
   app.use('/api/v1/blocks', blocksRouter);
   app.use('/api/v1/reports', reportsRouter);
-
+  app.use('/api/v1/keys', keysRouter);
+  app.use('/api/v1/conversations', conversationsRouter);
+  app.use('/api/v1/notifications', notificationsRouter);
   app.use((_req, res) => {
     res.status(404).json({ success: false, message: 'Route not found' });
   });

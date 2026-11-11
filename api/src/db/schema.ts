@@ -294,12 +294,14 @@ export const keyBackups = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     encryptedPrivateKey: text("encrypted_private_key").notNull(),
     nonce: text("nonce").notNull(),
+    kdfSalt: text("kdf_salt").notNull(),
     version: integer("version").notNull().default(1),
     updatedAt: timestamptz("updated_at").notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (t) => [
     check("key_backups_blob_length", sql`char_length(${t.encryptedPrivateKey}) = 64`),
     check("key_backups_nonce_length", sql`char_length(${t.nonce}) = 32`),
+    check("key_backups_salt_length", sql`char_length(${t.kdfSalt}) = 24`),
   ],
 );
 

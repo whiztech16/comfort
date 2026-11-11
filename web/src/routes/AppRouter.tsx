@@ -15,6 +15,8 @@ import SettingsPage from "../pages/app/SettingsPage";
 import CreatePostPage from "../pages/app/CreatePostPage";
 import ComfortDetailPage from "../pages/app/ComfortDetailPage";
 import ChangePasswordPage from "../pages/app/ChangePasswordPage";
+import ChangePassphrasePage from "../pages/app/ChangePassphrasePage";
+import ForgotPassphrasePage from "../pages/app/ForgotPassphrasePage";
 import MessagingPreferencesPage from "../pages/app/MessagingPreferencesPage";
 import BlockedUsersPage from "../pages/app/BlockedUsersPage";
 import AuthGuard from "./AuthGuard";
@@ -60,6 +62,8 @@ export default function AppRouter() {
 
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/change-password" element={<ChangePasswordPage />} />
+          <Route path="/settings/change-passphrase" element={<ChangePassphrasePage />} />
+          <Route path="/settings/forgot-passphrase" element={<ForgotPassphrasePage />} />
           <Route
             path="/settings/messaging-preferences"
             element={<MessagingPreferencesPage />}

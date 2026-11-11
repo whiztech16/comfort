@@ -8,19 +8,19 @@ type PrivacyStepProps = Readonly<{
   data: OnboardingData;
   onChange: (patch: Partial<OnboardingData>) => void;
   onBack: () => void;
-  onFinish: () => void;
+  onContinue: () => void;
 }>;
 
 export default function PrivacyStep({
   data,
   onChange,
   onBack,
-  onFinish,
+  onContinue,
 }: PrivacyStepProps) {
   return (
     <OnboardingShell
       step={2}
-      totalSteps={2}
+      totalSteps={3}
       title="Your privacy, your choice"
       subtitle="Choose who can find you and what you receive. You can change these anytime in Settings."
       onBack={onBack}
@@ -60,8 +60,8 @@ export default function PrivacyStep({
       </p>
 
       <div className="mt-auto pt-8">
-        <PrimaryButton onClick={onFinish} className="w-full">
-          Finish
+        <PrimaryButton onClick={onContinue} className="w-full">
+          Continue
         </PrimaryButton>
       </div>
     </OnboardingShell>

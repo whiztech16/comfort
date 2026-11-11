@@ -1,9 +1,12 @@
-import { Link, NavLink } from "react-router-dom";
-import { Heart } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Heart, LogOut } from "lucide-react";
 import logo from "../assets/images/comfort-logo.png";
 import { navItems } from "./navitems";
+import { logoutApi } from "../lib/api";
 
 export default function SideNav() {
+  const navigate = useNavigate();
+
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-black/[0.06] bg-white px-4 py-6 lg:flex">
       <Link
@@ -50,7 +53,21 @@ export default function SideNav() {
         })}
       </nav>
 
-      <div className="mt-auto px-3">
+      <div className="mt-auto px-1 pb-4">
+        <button
+          type="button"
+          onClick={async () => {
+            await logoutApi();
+            navigate("/login");
+          }}
+          className="flex w-full items-center gap-3.5 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-medium text-navy/70 transition-colors hover:bg-[#fff1f0] hover:text-[#b4443a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+        >
+          <LogOut aria-hidden className="h-5 w-5" strokeWidth={1.5} />
+          <span>Sign out</span>
+        </button>
+      </div>
+
+      <div className="px-3">
         <span aria-hidden className="block h-px w-5 bg-navy/25" />
         <p className="mt-3 font-serif text-[0.8125rem] italic leading-snug text-navy/60">
           Kindness.

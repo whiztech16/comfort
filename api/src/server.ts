@@ -4,9 +4,12 @@ import { env } from "./config/env";
 import { pool } from "./db";
 import { safeErrorInfo } from "./shared/errors";
 import { logger } from "./shared/logger";
+import { initSockets } from "./sockets";
 
 const app = createApp();
 const server = http.createServer(app);
+// Realtime shares the same HTTP server and port
+const io = initSockets(server);
 
 async function start() {
   // Warm the Neon pool so the first request skips the serverless cold-start.
@@ -26,7 +29,8 @@ async function start() {
 
 function shutdown(signal: string) {
   logger.info(`${signal} received, shutting down`);
-  server.close(async () => {
+  // Closes all sockets, then the HTTP server
+  io.close(async () => {
     await pool.end().catch(() => {});
     process.exit(0);
   });

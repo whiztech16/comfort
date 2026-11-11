@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import GoogleAuthButton from "./GoogleAuthButton";
 import { loginApi } from "../../lib/api";
 import { useToast } from "../../hooks/useToast";
+import { isPrivateDevice, setPrivateDevice } from "../../lib/chatKeys";
 
 const inputClass =
   "mt-1.5 h-11 w-full rounded-lg border border-black bg-white px-3.5 text-[0.875rem] text-charcoal outline-none transition placeholder:text-charcoal/40 focus:border-black focus:ring-2 focus:ring-black/15";
@@ -16,6 +17,7 @@ export default function LoginCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isPrivate, setIsPrivate] = useState<boolean>(() => isPrivateDevice());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +31,7 @@ export default function LoginCard() {
 
     try {
       setLoading(true);
+      setPrivateDevice(isPrivate);
       const data = await loginApi(email.trim(), password);
       showToast("Welcome back 💙");
       if (data?.user?.onboardingCompleted) {
@@ -113,6 +116,25 @@ export default function LoginCard() {
               )}
             </button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            id="private-device"
+            type="checkbox"
+            checked={isPrivate}
+            onChange={(e) => {
+              setIsPrivate(e.target.checked);
+              setPrivateDevice(e.target.checked);
+            }}
+            className="h-4 w-4 rounded border-gray-300 text-[#4a6b8c] accent-[#4a6b8c] focus:ring-[#4a6b8c]"
+          />
+          <label
+            htmlFor="private-device"
+            className="text-[0.8125rem] text-charcoal/80 cursor-pointer select-none"
+          >
+            This is my private device
+          </label>
         </div>
 
         <button

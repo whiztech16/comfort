@@ -1,3 +1,5 @@
+import { isPrivateDevice, removeLocalKey } from "./chatKeys";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export interface UserState {
@@ -153,10 +155,25 @@ export async function registerApi(email: string, password: string) {
 }
 
 export async function logoutApi() {
+  const currentUser = inMemoryUser;
   try {
     await apiRequest("/api/v1/auth/logout", { method: "POST" });
   } finally {
     setAccessToken(null);
     setUser(null);
+
+    // If not a private device, clear local private chat key
+    if (!isPrivateDevice() && currentUser?.id) {
+      try {
+        await removeLocalKey(currentUser.id);
+      } catch (err) {
+        console.warn("Failed to remove local chat key on logout:", err);
+      }
+    }
+
+    // Clear session storage and any cached items
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.clear();
+    }
   }
 }

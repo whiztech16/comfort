@@ -15,7 +15,14 @@
     { "key": "blockId",        "value": "" },
     { "key": "comfortId",      "value": "" },
     { "key": "postId",         "value": "" },
-    { "key": "categoryId",     "value": "" }
+    { "key": "categoryId",     "value": "" },
+    { "key": "linkRequestId",  "value": "" },
+    { "key": "publicKey",      "value": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=" },
+    { "key": "encryptedPrivateKey", "value": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC" },
+    { "key": "nonce",          "value": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD" },
+    { "key": "kdfSalt",        "value": "BQUFBQUFBQUFBQUFBQUFBQ==" },
+    { "key": "ephemeralPublicKey", "value": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=" },
+    { "key": "encryptedPayload", "value": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=" }
   ],
   "item": [
     {
@@ -650,6 +657,198 @@
               "mode": "raw",
               "raw": "{\n  \"type\": \"this_helped\"\n}"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Submit Report (Post)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.expect(pm.response.code).to.equal(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Report received', () => pm.expect(json.message).to.equal('Report received'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/reports",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"post\",\n  \"targetId\": \"{{postId}}\",\n  \"reason\": \"harassment\",\n  \"description\": \"This post contains harmful or abusive language.\"\n}"
+            },
+            "description": "Reports a post for moderation. Reasons: harassment, hate_speech, self_harm, spam, inappropriate, impersonation, other."
+          }
+        },
+        {
+          "name": "Submit Report (User)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/reports",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"user\",\n  \"username\": \"{{targetUsername}}\",\n  \"reason\": \"impersonation\",\n  \"description\": \"This profile is impersonating an official account.\"\n}"
+            },
+            "description": "Reports a public user profile."
+          }
+        },
+        {
+          "name": "Submit Report (Comfort)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/reports",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"comfort\",\n  \"targetId\": \"{{comfortId}}\",\n  \"reason\": \"inappropriate\",\n  \"description\": \"Received an unsolicited inappropriate comfort message.\"\n}"
+            },
+            "description": "Reports a received comfort message."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Keys & Device Linking",
+      "item": [
+        {
+          "name": "Set Account Public Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 or 200', () => pm.expect([200, 201]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/keys/account",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publicKey\": \"{{publicKey}}\"\n}"
+            },
+            "description": "Registers or confirms the user's primary public key (32 bytes base64)."
+          }
+        },
+        {
+          "name": "Get Account Public Key",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/keys/account",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Fetches the registered public key for this account."
+          }
+        },
+        {
+          "name": "Save Encrypted Key Backup",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/keys/backup",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"encryptedPrivateKey\": \"{{encryptedPrivateKey}}\",\n  \"nonce\": \"{{nonce}}\",\n  \"kdfSalt\": \"{{kdfSalt}}\"\n}"
+            },
+            "description": "Saves the user's password-encrypted private key blob and nonce."
+          }
+        },
+        {
+          "name": "Get Encrypted Key Backup",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/keys/backup",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Retrieves the encrypted private key blob for device recovery."
+          }
+        },
+        {
+          "name": "Create Link Request (New Device)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.expect(pm.response.code).to.equal(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('linkRequestId', json.data.id);",
+                  "  pm.test('Saved linkRequestId', () => pm.expect(json.data.id).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/keys/link-requests",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ephemeralPublicKey\": \"{{ephemeralPublicKey}}\"\n}"
+            },
+            "description": "Initiated by a new device to request pairing with an existing active device."
+          }
+        },
+        {
+          "name": "Poll Link Request Status (New Device)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/keys/link-requests/{{linkRequestId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "description": "Polled by the new device. Consumes the encrypted payload once approved."
+          }
+        },
+        {
+          "name": "Approve Link Request (Existing Device)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/keys/link-requests/{{linkRequestId}}/approve",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"encryptedPayload\": \"{{encryptedPayload}}\"\n}"
+            },
+            "description": "Called by the existing device to approve the pairing and transfer the encrypted key."
           }
         }
       ]

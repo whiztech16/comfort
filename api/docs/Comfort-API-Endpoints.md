@@ -1048,7 +1048,296 @@ Blocks the sender of a received comfort directly from the comfort message itself
 
 ---
 
-## 7. Postman Import File
+## 7. Reports Flow
+
+The moderation reporting endpoint allows users to submit reports for harmful content or abusive behavior across posts, comforts, direct messages, and user profiles.
+
+---
+
+### `POST /api/v1/reports`
+Submits a report for review.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireOnboarded`
+- **Rate Limit:** 10 reports / hour per user
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+
+#### Allowed Reasons:
+`"harassment"` | `"hate_speech"` | `"self_harm"` | `"spam"` | `"inappropriate"` | `"impersonation"` | `"other"`  
+*(Note: If `"other"` is selected, `description` is required).*
+
+#### Target Types & Request Bodies:
+
+1. **Reporting a Post:**
+```json
+{
+  "targetType": "post",
+  "targetId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "reason": "harassment",
+  "description": "This post contains harmful or abusive language targeting a person."
+}
+```
+
+2. **Reporting a Comfort Message:**
+```json
+{
+  "targetType": "comfort",
+  "targetId": "e4a7a8d5-397a-4ecb-9d47-6d601b38cf4e",
+  "reason": "inappropriate",
+  "description": "Unsolicited inappropriate content received in a comfort envelope."
+}
+```
+
+3. **Reporting a User Profile:**
+```json
+{
+  "targetType": "user",
+  "username": "alexrivera",
+  "reason": "impersonation",
+  "description": "This account is impersonating an official platform administrator."
+}
+```
+
+- **Success Response (`201 Created`):**
+```json
+{
+  "success": true,
+  "message": "Report received",
+  "data": {}
+}
+```
+- **Error Response — Reporting Yourself (`422 Unprocessable Entity`):**
+```json
+{
+  "success": false,
+  "code": "VALIDATION_ERROR",
+  "message": "Invalid request",
+  "errors": [
+    {
+      "path": "target",
+      "message": "You can't report yourself or your own content"
+    }
+  ]
+}
+```
+- **Error Response — Target Not Found (`404 Not Found`):**
+```json
+{
+  "success": false,
+  "code": "NOT_FOUND",
+  "message": "Report target not found"
+}
+```
+
+---
+
+## 8. Keys & Device Linking Flow (End-to-End Encryption)
+
+The Keys module manages cryptographic account public keys, password-encrypted private key backups, and device-to-device pairing requests (zero-knowledge transfer of private keys between an existing device and a new device).
+
+---
+
+### `PUT /api/v1/keys/account`
+Registers or verifies the user's primary public key (32 bytes base64, 44 characters).
+- **Auth:** Required (`Bearer <accessToken>`) + `requireActive`
+- **Rate Limit:** 10 requests / hour
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "publicKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+}
+```
+- **Success Response (`201 Created` on first set, `200 OK` on idempotency confirmation):**
+```json
+{
+  "success": true,
+  "message": "Account key saved",
+  "data": {
+    "publicKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+    "createdAt": "2026-11-10T12:00:00.000Z"
+  }
+}
+```
+- **Error Response — Key Mismatch (`409 Conflict`):**
+```json
+{
+  "success": false,
+  "code": "CONFLICT",
+  "message": "An account key is already set"
+}
+```
+
+---
+
+### `GET /api/v1/keys/account`
+Fetches the user's active public key.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireActive`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "publicKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+    "createdAt": "2026-11-10T12:00:00.000Z"
+  }
+}
+```
+
+---
+
+### `PUT /api/v1/keys/backup`
+Uploads the client's password-encrypted private key blob and nonce.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireActive`
+- **Rate Limit:** 10 requests / hour
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "encryptedPrivateKey": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC",
+  "nonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD",
+  "kdfSalt": "BQUFBQUFBQUFBQUFBQUFBQ=="
+}
+```
+> **Rules:**
+> - `encryptedPrivateKey`: 48 bytes base64 (64 characters).
+> - `nonce`: 24 bytes base64 (32 characters).
+> - `kdfSalt`: 16 bytes base64 (24 characters, Argon2id salt).
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "Backup saved",
+  "data": {
+    "version": 1,
+    "encryptedPrivateKey": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC",
+    "nonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD",
+    "kdfSalt": "BQUFBQUFBQUFBQUFBQUFBQ==",
+    "updatedAt": "2026-11-10T12:05:00.000Z"
+  }
+}
+```
+
+---
+
+### `GET /api/v1/keys/backup`
+Retrieves the encrypted private key backup for key recovery.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireActive`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "version": 1,
+    "encryptedPrivateKey": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC",
+    "nonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD",
+    "kdfSalt": "BQUFBQUFBQUFBQUFBQUFBQ==",
+    "updatedAt": "2026-11-10T12:05:00.000Z"
+  }
+}
+```
+    "updatedAt": "2026-11-10T12:05:00.000Z"
+  }
+}
+```
+
+---
+
+### `POST /api/v1/keys/link-requests` (Initiate Pairing on New Device)
+Initiates a 5-minute device link request with an ephemeral public key generated by the new device.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireActive`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "ephemeralPublicKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+}
+```
+- **Success Response (`201 Created`):**
+```json
+{
+  "success": true,
+  "message": "Link request created",
+  "data": {
+    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "status": "pending",
+    "expiresAt": "2026-11-10T12:15:00.000Z"
+  }
+}
+```
+
+---
+
+### `GET /api/v1/keys/link-requests/:id` (Poll Status on New Device)
+Polled by the new device. Once approved by the existing device, this call returns the `encryptedPayload` and automatically burns it from the server.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireActive`
+- **URL Parameter:**
+  - `:id` — Link request UUID
+- **Pending Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "status": "pending",
+    "expiresAt": "2026-11-10T12:15:00.000Z"
+  }
+}
+```
+- **Approved Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "status": "approved",
+    "encryptedPayload": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ="
+  }
+}
+```
+
+---
+
+### `POST /api/v1/keys/link-requests/:id/approve` (Approve on Existing Device)
+Called by the user's logged-in device after comparing pairing codes / fingerprints to approve transferring the account secret.
+- **Auth:** Required (`Bearer <accessToken>`) + `requireActive`
+- **Headers:**
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "encryptedPayload": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ="
+}
+```
+> **Rules:**
+> - `encryptedPayload`: 80 bytes base64 (108 characters).
+- **Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "Device approved",
+  "data": {
+    "status": "approved"
+  }
+}
+```
+
+---
+
+## 9. Postman Import File
 
 A ready-to-import Postman collection is located at:  
 👉 [`api/docs/Comfort-API.postman_collection.json`](file:///c:/Users/ADMIN/Desktop/comfort/api/docs/Comfort-API.postman_collection.json)
@@ -1057,5 +1346,5 @@ A ready-to-import Postman collection is located at:
 1. Open Postman.
 2. Click **Import** (top left).
 3. Drag and drop `api/docs/Comfort-API.postman_collection.json`.
-4. Variables `{{baseUrl}}`, `{{accessToken}}`, `{{blockId}}`, `{{targetUsername}}`, `{{comfortId}}`, and `{{postId}}` are managed automatically. Running **Register** or **Login** auto-saves the token for all subsequent protected requests.
+4. Variables `{{baseUrl}}`, `{{accessToken}}`, `{{blockId}}`, `{{targetUsername}}`, `{{comfortId}}`, `{{postId}}`, `{{categoryId}}`, `{{linkRequestId}}`, and test keys are managed automatically. Running **Register** or **Login** auto-saves the token for all subsequent protected requests.
 

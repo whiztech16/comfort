@@ -57,7 +57,7 @@ export default function ProfileStep({
   return (
     <OnboardingShell
       step={1}
-      totalSteps={2}
+      totalSteps={3}
       title="Let’s make yourself at home."
       subtitle="Tell us how you’d like to appear. You can change this anytime."
       onBack={onBack}

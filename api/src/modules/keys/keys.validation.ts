@@ -19,6 +19,7 @@ export const backupSchema = z
   .object({
     encryptedPrivateKey: base64Bytes(48), // secretbox of a 32-byte key
     nonce: base64Bytes(24),
+    kdfSalt: base64Bytes(16), // 16-byte Argon2id salt
   })
   .strict();
 

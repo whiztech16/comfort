@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import {
   PenLine,
   Lock,
+  KeyRound,
+  HelpCircle,
   LogOut,
   Trash2,
   Eye,
@@ -139,7 +141,9 @@ function ToggleRow({
 }
 
 // ─── Sign-out confirmation modal ──────────────────────────────────────────────
-function SignOutModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => void }) {
+function SignOutModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => Promise<void> }) {
+  const [loading, setLoading] = useState(false);
+
   return (
     <Modal
       title="Sign out?"
@@ -149,15 +153,24 @@ function SignOutModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: 
       <div className="flex flex-col gap-3 sm:flex-row-reverse">
         <button
           type="button"
-          onClick={onConfirm}
-          className="inline-flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-b from-[#527a9f] to-[#3f5f80] px-8 text-[0.9rem] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4a6b8c] sm:w-auto"
+          disabled={loading}
+          onClick={async () => {
+            setLoading(true);
+            try {
+              await onConfirm();
+            } finally {
+              setLoading(false);
+            }
+          }}
+          className="inline-flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-b from-[#527a9f] to-[#3f5f80] px-8 text-[0.9rem] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4a6b8c] disabled:opacity-60 sm:w-auto"
         >
-          Sign out
+          {loading ? "Signing out..." : "Sign out"}
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="h-12 rounded-full px-6 text-[0.9rem] font-medium text-navy/70 transition hover:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+          disabled={loading}
+          className="h-12 rounded-full px-6 text-[0.9rem] font-medium text-navy/70 transition hover:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep disabled:opacity-50"
         >
           Cancel
         </button>
@@ -265,6 +278,18 @@ export default function SettingsPage() {
           onClick={() => navigate("/settings/change-password")}
         />
         <Row
+          icon={KeyRound}
+          label="Change chat passphrase"
+          sub="Update your private chat encryption key"
+          onClick={() => navigate("/settings/change-passphrase")}
+        />
+        <Row
+          icon={HelpCircle}
+          label="Forgot chat passphrase?"
+          sub="Recovery details and how encryption works"
+          onClick={() => navigate("/settings/forgot-passphrase")}
+        />
+        <Row
           icon={LogOut}
           label="Sign out"
           onClick={() => setShowSignOut(true)}
@@ -344,7 +369,10 @@ export default function SettingsPage() {
       {showDelete && (
         <DeleteModal
           onClose={() => setShowDelete(false)}
-          onConfirm={() => navigate("/login")}
+          onConfirm={async () => {
+            await logoutApi();
+            navigate("/login");
+          }}
         />
       )}
     </div>

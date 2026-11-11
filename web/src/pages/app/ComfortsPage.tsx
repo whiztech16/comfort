@@ -42,14 +42,20 @@ export default function ComfortsPage() {
       .then(([recResult, sentResult]) => {
         if (!active) return;
         if (recResult.status === "fulfilled") {
-          setReceived(recResult.value.items);
+          const apiItems = recResult.value.items;
+          const localItems = listReceived();
+          const merged = [...apiItems, ...localItems.filter((l) => !apiItems.some((a) => a.id === l.id))];
+          setReceived(merged);
         } else {
           // Fall back to sample data if offline or unauthorized
           setReceived(listReceived());
         }
 
         if (sentResult.status === "fulfilled") {
-          setSent(sentResult.value.items);
+          const apiItems = sentResult.value.items;
+          const localItems = listSent();
+          const merged = [...apiItems, ...localItems.filter((l) => !apiItems.some((a) => a.id === l.id))];
+          setSent(merged);
         } else {
           setSent(listSent());
         }

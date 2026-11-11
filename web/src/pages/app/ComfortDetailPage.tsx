@@ -39,6 +39,12 @@ export default function ComfortDetailPage() {
   const [submittingAppreciation, setSubmittingAppreciation] = useState(false);
 
   useEffect(() => {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId);
+    if (!isUuid) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
     getComfortApi(messageId)
       .then((data) => {

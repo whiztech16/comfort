@@ -28,12 +28,31 @@ export default function SendComfortPage() {
   const { postId, username } = useParams();
   const navigate = useNavigate();
   const samplePost = postId ? getPost(postId) : undefined;
-  const profile = username ? getProfileByUsername(username) : undefined;
+  const sampleProfile = username ? getProfileByUsername(username) : undefined;
 
-  const [post, setPost] = useState<{ authorName: string | null; body: string } | null>(
-    samplePost ? { authorName: samplePost.authorName, body: samplePost.body } : null
+  const [post, setPost] = useState<{ authorName: string | null; body: string; isMine?: boolean } | null>(
+    samplePost ? { authorName: samplePost.authorName, body: samplePost.body, isMine: samplePost.mine } : null
   );
+  const [profile, setProfile] = useState<{
+    displayName: string;
+    username: string;
+    bio?: string | null;
+    acceptsComforts?: boolean;
+    isSelf?: boolean;
+  } | null>(
+    sampleProfile
+      ? {
+          displayName: sampleProfile.displayName,
+          username: sampleProfile.username,
+          bio: sampleProfile.bio,
+          acceptsComforts: sampleProfile.acceptsComforts,
+          isSelf: false,
+        }
+      : null
+  );
+
   const [loadingPost, setLoadingPost] = useState(Boolean(postId && !samplePost));
+  const [loadingProfile, setLoadingProfile] = useState(Boolean(username && !sampleProfile));
 
   const [body, setBody] = useState("");
   const [identity, setIdentity] = useState<Identity>("named");
@@ -45,19 +64,29 @@ export default function SendComfortPage() {
   useEffect(() => {
     if (!postId || samplePost) return;
     let active = true;
-    apiRequest<{ post: { author?: { displayName?: string | null }; content: string } | null }>(`/api/v1/posts/${postId}`)
+    apiRequest<{
+      post: {
+        author?: { displayName?: string | null; isAnonymous?: boolean };
+        content: string;
+        isMine?: boolean;
+      } | null;
+    }>(`/api/v1/posts/${postId}`)
       .then((res) => {
         if (!active) return;
         const p = res.data?.post;
         if (p) {
+          const isAuthorAnon = p.author?.isAnonymous ?? (p.author?.displayName === "Anonymous");
           setPost({
-            authorName: p.author?.displayName ?? null,
+            authorName: isAuthorAnon ? null : (p.author?.displayName ?? null),
             body: p.content,
+            isMine: p.isMine,
           });
+        } else {
+          setPost(null);
         }
       })
       .catch(() => {
-        // Post not found or error
+        if (active) setPost(null);
       })
       .finally(() => {
         if (active) setLoadingPost(false);
@@ -66,6 +95,44 @@ export default function SendComfortPage() {
       active = false;
     };
   }, [postId, samplePost]);
+
+  // If username is provided and not in sampleProfiles, fetch from API
+  useEffect(() => {
+    if (!username || sampleProfile) return;
+    let active = true;
+    apiRequest<{
+      profile: {
+        displayName: string;
+        username: string;
+        bio?: string | null;
+        isSelf?: boolean;
+      };
+    }>(`/api/v1/users/${username}`)
+      .then((res) => {
+        if (!active) return;
+        const u = res.data?.profile;
+        if (u) {
+          setProfile({
+            displayName: u.displayName,
+            username: u.username,
+            bio: u.bio,
+            acceptsComforts: true,
+            isSelf: u.isSelf,
+          });
+        } else {
+          setProfile(null);
+        }
+      })
+      .catch(() => {
+        if (active) setProfile(null);
+      })
+      .finally(() => {
+        if (active) setLoadingProfile(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [username, sampleProfile]);
 
   // After "sent" the person lands on their Sent tab, or can tap to go sooner
   useEffect(() => {
@@ -77,11 +144,23 @@ export default function SendComfortPage() {
     return () => window.clearTimeout(timer);
   }, [phase, navigate]);
 
-  if (loadingPost) {
+  if (loadingPost || loadingProfile) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-brand-deep" />
       </div>
+    );
+  }
+
+  // Prevent sending comfort to oneself
+  if (post?.isMine || profile?.isSelf) {
+    return (
+      <EmptyState
+        icon={FileX}
+        title="You can't send a Comfort to yourself"
+        text="Comforts are meant to be sent to others to show support."
+        action={<PrimaryLink to="/home">Go to home</PrimaryLink>}
+      />
     );
   }
 
@@ -111,7 +190,7 @@ export default function SendComfortPage() {
   }
 
   // The person has chosen not to receive Comforts
-  if (!post && profile && !profile.acceptsComforts) {
+  if (!post && profile && profile.acceptsComforts === false) {
     return (
       <EmptyState
         icon={FileX}
@@ -143,27 +222,30 @@ export default function SendComfortPage() {
     setErrorMessage(null);
     setPhase("sending");
     try {
-      if (postId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId)) {
+      const isUuid = Boolean(
+        postId &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId)
+      );
+
+      if (isUuid && postId) {
         await sendComfortApi(postId, message, identity === "anonymous");
-      } else if (postId) {
-        // Fallback or attempt API, fallback to mock if mock post ID
-        try {
-          await sendComfortApi(postId, message, identity === "anonymous");
-        } catch (apiErr: unknown) {
-          if (postId.startsWith("p")) {
-            addSentComfort(target, message);
-          } else {
-            throw apiErr;
-          }
-        }
       } else {
+        // Fallback for mock post or direct profile
         addSentComfort(target, message);
       }
       setPhase("sent");
     } catch (err: unknown) {
       setPhase("idle");
       setFailed(true);
-      const errMsg = err instanceof Error ? err.message : "We couldn't send your Comfort. Please try again.";
+      const errMsg =
+        typeof err === "object" &&
+        err !== null &&
+        "message" in err &&
+        typeof (err as { message: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : err instanceof Error
+          ? err.message
+          : "We couldn't send your Comfort. Please try again.";
       setErrorMessage(errMsg);
     }
   }

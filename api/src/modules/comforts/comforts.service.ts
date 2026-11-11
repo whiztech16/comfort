@@ -3,6 +3,8 @@ import { decryptAtRest, encryptAtRest } from "../../shared/crypto";
 import { decodeCursor, encodeCursor } from "../../shared/cursor";
 import { ApiError } from "../../shared/errors";
 import { toPublicIdentity } from "../../shared/public-identity";
+import { emitToUser } from "../../sockets/emitter";
+import { notify } from "../notifications/notifications.service";
 import { findVisiblePostAuthor } from "../posts/posts.repository";
 import type { AppreciationInput, ComfortListQuery, CreateComfortInput } from "./comforts.validation";
 import * as repo from "./comforts.repository";
@@ -12,6 +14,7 @@ const aad = (id: string) => `comfort:${id}`;
 
 function toComfortDto(row: repo.ComfortRow, viewerId: string) {
   const received = row.recipientId === viewerId;
+  // A recipient only sees the content after opening it
   const canRead = !received || row.openedAt !== null;
 
   const counterpart = received
@@ -38,6 +41,7 @@ function toComfortDto(row: repo.ComfortRow, viewerId: string) {
 }
 
 export async function sendComfort(senderId: string, input: CreateComfortInput) {
+  // The recipient always comes from the post author, never from the client (R3)
   const recipientId = await findVisiblePostAuthor(input.postId, senderId);
   if (!recipientId) throw new ApiError(404, "NOT_FOUND", "Post not found");
   if (recipientId === senderId) {
@@ -62,6 +66,10 @@ export async function sendComfort(senderId: string, input: CreateComfortInput) {
     keyVersion: sealed.keyVersion,
     isAnonymous: input.isAnonymous,
   });
+
+  // Notification and live event carry the Comfort ID only, never the sender
+  await notify(recipientId, "new_comfort", "comfort", id);
+  emitToUser(recipientId, "comfort:new", { comfortId: id });
 
   const row = await repo.findComfortFor(id, senderId);
   if (!row) throw new ApiError(500, "INTERNAL_ERROR", "Something went wrong");
@@ -98,6 +106,7 @@ export async function getComfort(userId: string, id: string) {
 }
 
 export async function openComfort(userId: string, id: string) {
+  // Atomic: only the very first open flips opened_at (R7, R8)
   const justOpened = await repo.markOpened(id, userId);
   const row = await repo.findComfortFor(id, userId);
   if (!row || row.recipientId !== userId) throw notFound();
@@ -115,5 +124,7 @@ export async function appreciateComfort(userId: string, id: string, input: Appre
       row.openedAt === null ? "Open this Comfort before responding" : "You have already responded to this Comfort",
     );
   }
+  // The sender is told by Comfort ID only, never who appreciated it
+  await notify(row.senderId, "new_appreciation", "comfort", id);
   return toComfortDto(row, userId);
 }

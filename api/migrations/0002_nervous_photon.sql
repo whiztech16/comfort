@@ -1,0 +1,2 @@
+ALTER TABLE "key_backups" ADD COLUMN "kdf_salt" text NOT NULL;--> statement-breakpoint
+ALTER TABLE "key_backups" ADD CONSTRAINT "key_backups_salt_length" CHECK (char_length("key_backups"."kdf_salt") = 24);

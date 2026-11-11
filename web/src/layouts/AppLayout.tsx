@@ -4,6 +4,7 @@ import AppHeader from "./AppHeader";
 import BottomNav from "./BottomNav";
 import SideNav from "./SideNav";
 import ToastProvider from "../context/ToastProvider";
+import UnlockChatsModal from "../components/messaging/UnlockChatsModal";
 
 export default function AppLayout() {
   const inConversation = useMatch("/comforts/conversations/:conversationId");
@@ -50,6 +51,9 @@ export default function AppLayout() {
 
         {/* Bottom nav sits in normal flow — always visible above content */}
         <BottomNav />
+
+        {/* Modal to prompt for chat passphrase if local key is missing */}
+        <UnlockChatsModal />
       </div>
     </ToastProvider>
   );
