@@ -5,6 +5,9 @@ import { requireOnboarded } from "../../middleware/require-onboarded";
 import { getProfile, getSettings, updateProfile, updateSettings } from "./users.controller";
 import { removeAccount } from "./account.controller";
 import { myPosts, userPosts } from "./user-posts.controller";
+
+import { avatarUpload } from "../../shared/http/upload";
+import { removeAvatar, uploadAvatar } from "./avatar.controller";
 const limiter = (limit: number, windowMs: number) =>
   rateLimit({
     windowMs,
@@ -20,6 +23,7 @@ const limiter = (limit: number, windowMs: number) =>
 const readLimiter = limiter(120, 15 * 60 * 1000); // also slows username scraping
 const writeLimiter = limiter(20, 60 * 60 * 1000);
 const deleteLimiter = limiter(5, 60 * 60 * 1000);
+const avatarLimiter = limiter(15, 60 * 60 * 1000);
 
 export const usersRouter = Router();
 usersRouter.patch("/me/profile", authenticate, writeLimiter, requireOnboarded, updateProfile);
@@ -29,6 +33,8 @@ usersRouter.delete("/me", authenticate, deleteLimiter, removeAccount);
 usersRouter.get("/me/posts", authenticate, readLimiter, requireOnboarded, myPosts);
 usersRouter.get("/:username/posts", authenticate, readLimiter, requireOnboarded, userPosts);
 usersRouter.get("/:username", authenticate, readLimiter, requireOnboarded, getProfile);
+usersRouter.post("/me/avatar", authenticate, avatarLimiter, requireOnboarded, avatarUpload, uploadAvatar);
+usersRouter.delete("/me/avatar", authenticate, avatarLimiter, requireOnboarded, removeAvatar);
 
 export const settingsRouter = Router();
 settingsRouter.get("/", authenticate, readLimiter, requireOnboarded, getSettings);

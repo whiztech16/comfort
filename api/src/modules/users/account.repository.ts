@@ -57,3 +57,11 @@ export async function markDeleted(tx: Tx, userId: string) {
     })
     .where(eq(users.id, userId));
 }
+export async function findAvatarPublicId(tx: Tx, userId: string) {
+  const [row] = await tx
+    .select({ id: profiles.avatarPublicId })
+    .from(profiles)
+    .where(eq(profiles.userId, userId))
+    .limit(1);
+  return row?.id ?? null;
+}

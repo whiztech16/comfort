@@ -11,5 +11,6 @@ if (hostOf(test) === hostOf(process.env.DATABASE_URL) || hostOf(test) === hostOf
 
 process.env.DATABASE_URL = test;
 process.env.DATABASE_URL_UNPOOLED = test;
+process.env.GOOGLE_CLIENT_ID ||= "test-client.apps.googleusercontent.com";
 // Each test user gets its own fake IP via X-Forwarded-For, so IP rate limits don't collide
 process.env.TRUST_PROXY = "1";

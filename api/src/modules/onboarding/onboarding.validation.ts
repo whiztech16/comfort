@@ -34,20 +34,10 @@ export const onboardingBodySchema = z
       .trim()
       .max(160, "Bio must be 160 characters or fewer")
       .regex(SAFE_BIO, "Bio contains invalid characters")
-      .optional()
-      .nullable(),
-    discoverableProfile: z.boolean().optional(),
-    discoverable: z.boolean().optional(),
-    allowPrivateMessages: z.enum(["allowed", "requests_only", "off"]).optional(),
-    allowMessageRequests: z.boolean().optional(),
+      .optional(),
+    discoverableProfile: z.boolean(),
+    allowPrivateMessages: z.enum(["allowed", "requests_only", "off"]),
   })
-  .transform((data) => ({
-    displayName: data.displayName,
-    username: data.username,
-    bio: data.bio ?? undefined,
-    discoverableProfile: data.discoverableProfile ?? data.discoverable ?? true,
-    allowPrivateMessages:
-      data.allowPrivateMessages ?? (data.allowMessageRequests === false ? ("off" as const) : ("allowed" as const)),
-  }));
+  .strict(); // unknown fields (userId, onboardingCompleted...) are rejected with 422
 
 export type OnboardingInput = z.infer<typeof onboardingBodySchema>;

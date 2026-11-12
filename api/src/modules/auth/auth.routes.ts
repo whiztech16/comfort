@@ -9,7 +9,7 @@ import {
   registerLimiter,
   resetLimiter,
   sensitiveLimiter,
-} from"../../shared/http/rate-limit";
+} from "../../shared/http/rate-limit";
 import {
   changePassword,
   forgotPassword,
@@ -34,6 +34,6 @@ authRouter.post("/logout", logout);
 authRouter.get("/me", authenticate, me);
 authRouter.get("/sessions", authenticate, listSessions);
 authRouter.delete("/sessions/:id", authenticate, revokeSession);
-authRouter.patch("/change-password", authenticate, sensitiveLimiter, changePassword);
+authRouter.post("/change-password", authenticate, sensitiveLimiter, changePassword);
 authRouter.post("/forgot-password", forgotLimiter, forgotPassword);
 authRouter.post("/reset-password", resetLimiter, resetPassword);
