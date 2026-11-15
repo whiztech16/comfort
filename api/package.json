@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Comfort Backend API",
   "type": "module",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts | pnpm exec pino-pretty",
     "build": "tsup src/server.ts src/db/migrate.ts --format esm --target node20 --platform node --clean",
@@ -70,7 +74,7 @@
     "tsup": "^9.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.72.2",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^5.1.0"
   }
 }
