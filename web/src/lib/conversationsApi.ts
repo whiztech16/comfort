@@ -115,11 +115,6 @@ export async function markReadApi(conversationId: string): Promise<void> {
   await apiRequest(`/api/v1/conversations/${conversationId}/read`, { method: "POST" });
 }
 
-
-
-
-
-
 export function toConversationSummary(c: ApiConversation): ConversationSummary {
   return {
     id: c.id,
@@ -129,4 +124,17 @@ export function toConversationSummary(c: ApiConversation): ConversationSummary {
     hasMessages: c.lastMessageAt !== null,
     locked: c.locked,
   };
+}
+export function isApiMessage(value: unknown): value is ApiMessage {
+  if (typeof value !== "object" || value === null) return false;
+  const m = value as Record<string, unknown>;
+  return (
+    typeof m.id === "string" &&
+    typeof m.ciphertext === "string" &&
+    typeof m.nonce === "string" &&
+    typeof m.senderWrappedKey === "string" &&
+    typeof m.recipientWrappedKey === "string" &&
+    typeof m.isMine === "boolean" &&
+    typeof m.createdAt === "string"
+  );
 }

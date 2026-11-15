@@ -7,6 +7,7 @@ import SafetyMenu from "../../components/safety/SafetyMenu";
 import { EmptyState } from "../../components/shared/States";
 import { PrimaryButton, PrimaryLink } from "../../components/shared/PrimaryButton";
 import { useChatKey } from "../../context/ChatKeyContext";
+import { useSocket } from "../../context/SocketContext";
 import { getUser } from "../../lib/api";
 import { blockConversationApi, unblockConversationApi } from "../../lib/blocksApi";
 import { getLocalKey } from "../../lib/chatKeys";
@@ -15,6 +16,7 @@ import { MAX_MESSAGE_CHARS, openMessage, sealMessage } from "../../lib/chatCrypt
 import {
   formatChatTime,
   getConversationApi,
+  isApiMessage,
   listMessagesApi,
   markReadApi,
   sendMessageApi,
@@ -94,6 +96,7 @@ function BackButton() {
 export default function ConversationPage() {
   const { conversationId = "" } = useParams();
   const { ensureChatKey } = useChatKey();
+  const { socket, connected } = useSocket();
 
   const [status, setStatus] = useState<Status>("loading");
   const [attempt, setAttempt] = useState(0);
@@ -106,12 +109,13 @@ export default function ConversationPage() {
 
   const keysRef = useRef<StoredKeypair | null>(null);
   const messagesRef = useRef<ThreadMessage[]>([]);
+  const wasOfflineRef = useRef(false);
+  const unreadWhileHiddenRef = useRef(false);
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
-  // Ask for the chat key, then load and decrypt the conversation
   useEffect(() => {
     if (!UUID_RE.test(conversationId)) {
       setStatus("notfound");
@@ -123,6 +127,7 @@ export default function ConversationPage() {
     setConversation(null);
     setMessages([]);
     setSendError(null);
+    unreadWhileHiddenRef.current = false;
 
     (async () => {
       const userId = getUser()?.id;
@@ -164,15 +169,44 @@ export default function ConversationPage() {
     };
   }, [conversationId, ensureChatKey, attempt]);
 
-  // Check for new messages while the tab is visible
+  useEffect(() => {
+    if (status !== "ready" || !socket) return;
+    const keys = keysRef.current;
+    if (!keys) return;
+
+    const onNew = (payload: unknown) => {
+      const data = payload as { conversationId?: unknown; message?: unknown } | null;
+      if (data?.conversationId !== conversationId || !isApiMessage(data.message)) return;
+      const incoming = data.message;
+      if (messagesRef.current.some((m) => m.id === incoming.id)) return;
+
+      toThread([incoming], keys, conversationId)
+        .then((decoded) => {
+          setMessages((prev) => mergeMessages(prev, decoded));
+          if (incoming.isMine) return;
+          if (document.visibilityState === "visible") {
+            markReadApi(conversationId).catch(() => undefined);
+          } else {
+            unreadWhileHiddenRef.current = true;
+          }
+        })
+        .catch(() => undefined);
+    };
+
+    socket.on("message:new", onNew);
+    return () => {
+      socket.off("message:new", onNew);
+    };
+  }, [socket, status, conversationId]);
+
   useEffect(() => {
     if (status !== "ready") return;
     const keys = keysRef.current;
     if (!keys) return;
 
     let busy = false;
-    const timer = window.setInterval(async () => {
-      if (busy || document.visibilityState !== "visible") return;
+    const sync = async () => {
+      if (busy) return;
       busy = true;
       try {
         const page = await listMessagesApi(conversationId, 20);
@@ -181,16 +215,42 @@ export default function ConversationPage() {
         if (fresh.length > 0) {
           const decoded = await toThread([...fresh].reverse(), keys, conversationId);
           setMessages((prev) => mergeMessages(prev, decoded));
-          if (fresh.some((m) => !m.isMine)) markReadApi(conversationId).catch(() => undefined);
+          if (fresh.some((m) => !m.isMine) && document.visibilityState === "visible") {
+            markReadApi(conversationId).catch(() => undefined);
+          }
         }
       } catch {
-        // Try again on the next tick
+        return;
       } finally {
         busy = false;
       }
-    }, POLL_MS);
+    };
 
+    if (connected) {
+      if (wasOfflineRef.current) {
+        wasOfflineRef.current = false;
+        sync().catch(() => undefined);
+      }
+      return;
+    }
+
+    wasOfflineRef.current = true;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      sync().catch(() => undefined);
+    }, POLL_MS);
     return () => window.clearInterval(timer);
+  }, [status, conversationId, connected]);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible" || !unreadWhileHiddenRef.current) return;
+      unreadWhileHiddenRef.current = false;
+      markReadApi(conversationId).catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [status, conversationId]);
 
   async function loadEarlier() {
@@ -204,18 +264,17 @@ export default function ConversationPage() {
       setCursor(page.nextCursor);
       setHasEarlier(page.hasMore);
     } catch {
-      // The button stays so they can try again
+      return;
     } finally {
       setLoadingEarlier(false);
     }
   }
 
-  // After a block or unblock, reload the conversation so the page matches the server
   async function refreshConversation() {
     try {
       setConversation(await getConversationApi(conversationId));
     } catch {
-      // Keep the current view; the next visit will refresh it
+      return;
     }
   }
 

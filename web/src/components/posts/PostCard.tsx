@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Send, Trash2, PenLine } from "lucide-react";
-import Avatar from "../shared/Avatar";
+import ProfileAvatar from "../profile/ProfileAvatar";
 import ShareMenu from "./ShareMenu";
 import DeletePostModal from "./DeletePostModal";
 import EditPostModal from "./EditPostModal";
 import SafetyMenu from "../safety/SafetyMenu";
 import { useToast } from "../../hooks/useToast";
-import { apiRequest } from "../../lib/api";
+import { apiRequest, getUser } from "../../lib/api";
 import { blockByUsernameApi } from "../../lib/blocksApi";
 import type { Post } from "../../types/posts";
 
@@ -23,6 +23,9 @@ export default function PostCard({ post }: Readonly<{ post: Post }>) {
   const canShare = post.visibility === "public";
   const anonymousAndMine = post.mine === true && post.authorName === null;
   const authorUsername = post.authorUsername;
+  const photoUrl = post.mine && post.authorName !== null
+    ? (getUser()?.profile?.avatarUrl ?? post.authorAvatarUrl ?? null)
+    : (post.authorAvatarUrl ?? null);
 
   let profilePath: string | null = null;
   if (authorUsername) {
@@ -46,7 +49,7 @@ export default function PostCard({ post }: Readonly<{ post: Post }>) {
 
   const identity = (
     <>
-      <Avatar name={post.authorName} />
+      <ProfileAvatar name={post.authorName ?? "Anonymous"} photoUrl={photoUrl} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[0.9375rem] font-semibold text-navy">
           {post.authorName ?? "Anonymous"}

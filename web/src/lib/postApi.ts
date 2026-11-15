@@ -15,7 +15,6 @@ export type ApiPost = {
   };
 };
 
-// "Just now", "5m ago", "3h ago", "2d ago", then a date
 export function timeAgo(iso: string, now = Date.now()): string {
   const seconds = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
   if (seconds < 60) return "Just now";
@@ -29,13 +28,13 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 export function formatApiPost(p: ApiPost): Post {
-  // Anonymous authors never carry a name or username, not even for their own posts
   const anonymous = p.author.isAnonymous;
   return {
     id: p.id,
     body: p.content,
     authorName: anonymous ? null : p.author.displayName,
     authorUsername: anonymous ? null : p.author.username,
+    authorAvatarUrl: anonymous ? null : (p.author.avatarUrl ?? null),
     category: p.category.name,
     postedAgo: timeAgo(p.createdAt),
     mine: p.isMine,

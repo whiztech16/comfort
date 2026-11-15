@@ -2,16 +2,16 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send } from "lucide-react";
-import Avatar from "../shared/Avatar";
+import ProfileAvatar from "../profile/ProfileAvatar";
+import { getUser } from "../../lib/api";
 
 export default function ComposerPrompt({ name }: Readonly<{ name: string }>) {
   const [draft, setDraft] = useState("");
   const navigate = useNavigate();
+  const photoUrl = getUser()?.profile?.avatarUrl ?? null;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Nothing is published here. The draft goes to the Create Post screen,
-    // where the person chooses who can see it before posting.
     navigate("/posts/new", { state: { draft: draft.trim() } });
   }
 
@@ -20,7 +20,7 @@ export default function ComposerPrompt({ name }: Readonly<{ name: string }>) {
       onSubmit={handleSubmit}
       className="liquid-glass flex items-center gap-3 rounded-full p-2 focus-within:ring-2 focus-within:ring-brand/40"
     >
-      <Avatar name={name} />
+      <ProfileAvatar name={name} photoUrl={photoUrl} size="sm" />
 
       <label htmlFor="composer" className="sr-only">
         Share something

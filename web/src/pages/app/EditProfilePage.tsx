@@ -2,11 +2,11 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import Avatar from "../../components/shared/Avatar";
 import { PrimaryButton } from "../../components/shared/PrimaryButton";
 import { useToast } from "../../hooks/useToast";
 import { apiRequest, getUser, setUser } from "../../lib/api";
 import type { UserState } from "../../lib/api";
+import AvatarPicker from "../../components/profile/AvatarPicker";
 
 const labelClass = "mb-2 block text-[0.8125rem] font-medium text-navy";
 
@@ -31,10 +31,8 @@ export default function EditProfilePage() {
   const [bio, setBio] = useState(profile?.bio ?? "");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Errors that come back from the API (for example, a taken username)
   const [serverErrors, setServerErrors] = useState<FieldErrors>({});
 
-  // Same rules as the API: names 1-50 characters, usernames start with a letter
   const errors: FieldErrors = {};
   if (displayName.trim().length < 2) {
     errors.displayName = "Please enter at least 2 characters.";
@@ -46,17 +44,23 @@ export default function EditProfilePage() {
   const nameError = submitted ? (errors.displayName ?? serverErrors.displayName) : undefined;
   const usernameError = submitted ? (errors.username ?? serverErrors.username) : undefined;
 
+  function handleAvatarChange(url: string | null) {
+    const current = getUser();
+    if (current?.profile) {
+      setUser({ ...current, profile: { ...current.profile, avatarUrl: url } });
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
     setServerErrors({});
     if (errors.displayName || errors.username) return;
 
-    // Send only what changed: the API rejects an empty update
     const patch: { displayName?: string; username?: string; bio?: string } = {};
     if (displayName.trim() !== (profile?.displayName ?? "")) patch.displayName = displayName.trim();
     if (username !== (profile?.username ?? "")) patch.username = username;
-    if (bio.trim() !== (profile?.bio ?? "")) patch.bio = bio.trim(); // "" clears the bio
+    if (bio.trim() !== (profile?.bio ?? "")) patch.bio = bio.trim();
 
     if (Object.keys(patch).length === 0) {
       navigate("/profile");
@@ -72,8 +76,9 @@ export default function EditProfilePage() {
           body: JSON.stringify(patch),
         },
       );
-      if (res.data?.profile && user) {
-        setUser({ ...user, profile: res.data.profile });
+      const current = getUser();
+      if (res.data?.profile && current) {
+        setUser({ ...current, profile: res.data.profile });
       }
       showToast("Profile updated.");
       navigate("/profile");
@@ -113,16 +118,12 @@ export default function EditProfilePage() {
         </p>
       </section>
 
-      <div className="flex items-center gap-4 rounded-3xl border border-black/[0.06] bg-[#f8fafd] p-4">
-        <Avatar name={displayName || "A"} size="lg" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[1rem] font-semibold text-navy">
-            {displayName.trim() || "Your name"}
-          </p>
-          <p className="mt-0.5 text-[0.8125rem] text-navy/55">
-            Comfort uses initials to keep things calm and free of photo pressure.
-          </p>
-        </div>
+      <div className="rounded-3xl border border-black/[0.06] bg-[#f8fafd] p-4">
+        <AvatarPicker
+          name={displayName}
+          photoUrl={profile?.avatarUrl ?? null}
+          onChange={handleAvatarChange}
+        />
       </div>
 
       <form noValidate onSubmit={handleSubmit} className="space-y-5">

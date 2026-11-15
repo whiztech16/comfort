@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import type { ElementType } from "react";
 import { Link } from "react-router-dom";
 import { Bell, Heart, Mail, Sparkles, X } from "lucide-react";
-import Avatar from "../components/shared/Avatar";
+import ProfileAvatar from "../components/profile/ProfileAvatar";
 import logo from "../assets/images/comfort-logo.png";
 import { getUser } from "../lib/api";
 import { notificationPath } from "../lib/notificationsApi";
@@ -140,7 +140,13 @@ export default function AppHeader() {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { items, unread, markRead, markAllRead } = useNotifications(showNotifs);
-  const user = getUser();
+  const [user, setCurrentUser] = useState(getUser());
+
+  useEffect(() => {
+    const sync = () => setCurrentUser(getUser());
+    window.addEventListener("comfort:user-updated", sync);
+    return () => window.removeEventListener("comfort:user-updated", sync);
+  }, []);
 
   useEffect(() => {
     if (!showNotifs) return;
@@ -204,7 +210,11 @@ export default function AppHeader() {
             }}
             className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
           >
-            <Avatar name={user?.profile?.displayName ?? ""} />
+            <ProfileAvatar
+              name={user?.profile?.displayName ?? ""}
+              photoUrl={user?.profile?.avatarUrl ?? null}
+              size="sm"
+            />
           </Link>
         </div>
       </div>
