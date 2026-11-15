@@ -27,18 +27,26 @@ async function start() {
   }
 }
 
-function shutdown(signal: string) {
+async function shutdown(signal: string) {
   logger.info(`${signal} received, shutting down`);
-  // Closes all sockets, then the HTTP server
-  io.close(async () => {
-    await pool.end().catch(() => {});
-    process.exit(0);
-  });
   setTimeout(() => process.exit(1), 10_000).unref();
+  try {
+    // Closes all sockets, then the HTTP server
+    await io.close();
+    await pool.end();
+    process.exit(0);
+  } catch (err) {
+    logger.error({ error: safeErrorInfo(err) }, "Shutdown failed");
+    process.exit(1);
+  }
 }
 
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => {
+  shutdown("SIGTERM").catch(() => process.exit(1));
+});
+process.on("SIGINT", () => {
+  shutdown("SIGINT").catch(() => process.exit(1));
+});
 process.on("unhandledRejection", (reason) => {
   logger.error({ error: safeErrorInfo(reason) }, "Unhandled promise rejection");
 });

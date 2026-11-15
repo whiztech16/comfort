@@ -1,6 +1,11 @@
 import type { RequestHandler, Response } from "express";
 import { asyncHandler } from "../../shared/http/async-handler";
-import { createPostSchema, feedQuerySchema, postParamsSchema } from "./posts.validation";
+import {
+  createPostSchema,
+  feedQuerySchema,
+  postParamsSchema,
+  updatePostSchema,
+} from "./posts.validation";
 import * as service from "./posts.service";
 
 const send = (res: Response, status: number, data: unknown, message = "OK") => {
@@ -26,4 +31,10 @@ export const removePost: RequestHandler = asyncHandler(async (req, res) => {
   const { id } = postParamsSchema.parse(req.params);
   await service.deletePost(req.auth!.userId, id);
   send(res, 200, {}, "Post deleted");
+});
+
+export const editPost: RequestHandler = asyncHandler(async (req, res) => {
+  const { id } = postParamsSchema.parse(req.params);
+  const { content } = updatePostSchema.parse(req.body);
+  send(res, 200, { post: await service.updatePost(req.auth!.userId, id, content) }, "Post updated");
 });

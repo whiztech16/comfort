@@ -2,11 +2,6 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { getAccessToken, getUser, fetchMe } from "../lib/api";
 
-/**
- * Protects /onboarding route.
- * - Unauthenticated users -> redirected to /login.
- * - Users who have already completed onboarding -> redirected to /home.
- */
 export default function OnboardingGuard() {
   const token = getAccessToken();
   const [user, setUserState] = useState(getUser());
@@ -32,7 +27,6 @@ export default function OnboardingGuard() {
     );
   }
 
-  // Already onboarded -> cannot re-enter onboarding
   if (user?.onboardingCompleted) {
     return <Navigate to="/home" replace />;
   }

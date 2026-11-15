@@ -8,12 +8,22 @@ const menuItem =
   "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.875rem] font-medium text-navy transition hover:bg-[#f1f3fa] focus-visible:outline-2 focus-visible:outline-brand-deep";
 
 type SafetyMenuProps = Readonly<{
-  name: string | null; // null when the person is anonymous
+  name: string | null;
   reportKind: ReportKind;
+  blocked?: boolean;
+  onBlock?: () => Promise<unknown>;
+  onUnblock?: () => Promise<unknown>;
+  onBlockChange?: () => void;
 }>;
 
-// The "..." menu with Report and Block, used on posts, messages and profiles
-export default function SafetyMenu({ name, reportKind }: SafetyMenuProps) {
+export default function SafetyMenu({
+  name,
+  reportKind,
+  blocked = false,
+  onBlock,
+  onUnblock,
+  onBlockChange,
+}: SafetyMenuProps) {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<"report" | "block" | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -45,6 +55,46 @@ export default function SafetyMenu({ name, reportKind }: SafetyMenuProps) {
     setModal(next);
   }
 
+  async function handleBlock() {
+    if (!onBlock) return;
+    await onBlock();
+    onBlockChange?.();
+  }
+
+  async function handleUnblock() {
+    setOpen(false);
+    if (!onUnblock) return;
+    try {
+      await onUnblock();
+      onBlockChange?.();
+    } catch {
+      return;
+    }
+  }
+
+  let blockItem = null;
+  if (blocked) {
+    blockItem = (
+      <button
+        type="button"
+        onClick={() => {
+          handleUnblock().catch(() => undefined);
+        }}
+        className={menuItem}
+      >
+        <Ban aria-hidden className="h-[18px] w-[18px] text-navy/60" strokeWidth={1.75} />
+        Unblock {name ?? "this person"}
+      </button>
+    );
+  } else if (onBlock) {
+    blockItem = (
+      <button type="button" onClick={() => choose("block")} className={menuItem}>
+        <Ban aria-hidden className="h-[18px] w-[18px] text-navy/60" strokeWidth={1.75} />
+        Block {name ?? "this person"}
+      </button>
+    );
+  }
+
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -69,10 +119,7 @@ export default function SafetyMenu({ name, reportKind }: SafetyMenuProps) {
             <Flag aria-hidden className="h-[18px] w-[18px] text-navy/60" strokeWidth={1.75} />
             Report {reportKind}
           </button>
-          <button type="button" onClick={() => choose("block")} className={menuItem}>
-            <Ban aria-hidden className="h-[18px] w-[18px] text-navy/60" strokeWidth={1.75} />
-            Block {name ?? "this person"}
-          </button>
+          {blockItem}
         </div>
       ) : null}
 
@@ -80,7 +127,7 @@ export default function SafetyMenu({ name, reportKind }: SafetyMenuProps) {
         <ReportModal kind={reportKind} onClose={() => setModal(null)} />
       ) : null}
       {modal === "block" ? (
-        <BlockConfirmModal name={name} onClose={() => setModal(null)} />
+        <BlockConfirmModal name={name} onConfirm={handleBlock} onClose={() => setModal(null)} />
       ) : null}
     </div>
   );

@@ -22,6 +22,27 @@
       "when": 1794340573396,
       "tag": "0002_nervous_photon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794566914322,
+      "tag": "0003_magical_satana",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794690926651,
+      "tag": "0004_left_moira_mactaggert",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794742614685,
+      "tag": "0005_good_greymalkin",
+      "breakpoints": true
     }
   ]
 }

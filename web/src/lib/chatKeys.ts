@@ -1,11 +1,19 @@
-import sodium from "libsodium-wrappers";
+import sodium from "libsodium-wrappers-sumo";
 
 const b64 = (b: Uint8Array) => sodium.to_base64(b, sodium.base64_variants.ORIGINAL);
 const unb64 = (s: string) => sodium.from_base64(s, sodium.base64_variants.ORIGINAL);
 
+// Waits for libsodium and confirms the password-hashing functions exist
+async function ready() {
+  await sodium.ready;
+  if (typeof sodium.crypto_pwhash !== "function" || !sodium.crypto_pwhash_SALTBYTES) {
+    throw new Error("Encryption library is missing password hashing support");
+  }
+}
+
 // Passphrase -> 32-byte key. Params are fixed for backup version 1
 async function deriveKey(passphrase: string, salt: Uint8Array) {
-  await sodium.ready;
+  await ready();
   return sodium.crypto_pwhash(
     sodium.crypto_secretbox_KEYBYTES,
     passphrase.normalize("NFKC"),
@@ -17,14 +25,14 @@ async function deriveKey(passphrase: string, salt: Uint8Array) {
 }
 
 export async function generateAccountKeys() {
-  await sodium.ready;
+  await ready();
   const { publicKey, privateKey } = sodium.crypto_box_keypair();
   return { publicKey, privateKey, publicKeyB64: b64(publicKey) };
 }
 
 // Encrypts the private key for upload. All three values are base64
 export async function createBackup(privateKey: Uint8Array, passphrase: string) {
-  await sodium.ready;
+  await ready();
   const salt = sodium.randombytes_buf(sodium.crypto_pwhash_SALTBYTES);
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
   let key: Uint8Array | null = null;
@@ -47,7 +55,7 @@ export async function restoreFromBackup(
   passphrase: string,
   serverPublicKeyB64: string,
 ): Promise<Uint8Array | null> {
-  await sodium.ready;
+  await ready();
   let key: Uint8Array | null = null;
   try {
     const salt = unb64(backup.kdfSalt);
@@ -151,4 +159,3 @@ export function setPrivateDevice(isPrivate: boolean): void {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(PRIVATE_DEVICE_KEY, isPrivate ? "true" : "false");
 }
-

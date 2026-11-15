@@ -1,61 +1,70 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import {
-  ArrowLeft,
-  MessageCircle,
-  Send,
-  CheckCheck,
-  Clock,
-  FileX,
-  Loader2,
-} from "lucide-react";
+import { ArrowLeft, MessageCircle, CheckCheck, Clock, FileX, Trash2 } from "lucide-react";
 import EnvelopeReveal from "../../components/comforts/EnvelopeReveal";
+import LetterView from "../../components/comforts/LetterView";
+import DeleteComfortModal from "../../components/comforts/DeleteComfortModal";
 import { EmptyState } from "../../components/shared/States";
+import { ComfortDetailSkeleton } from "../../components/shared/Skeleton";
 import { PrimaryLink, PrimaryButton } from "../../components/shared/PrimaryButton";
-import {
-  getComfort,
-  markOpened,
-  startConversation,
-  setAppreciation,
-} from "../../lib/sampleComforts";
+import { useChatKey } from "../../context/ChatKeyContext";
+import { useToast } from "../../hooks/useToast";
+import { getUser } from "../../lib/api";
 import {
   getComfortApi,
   openComfortApi,
   appreciateComfortApi,
+  deleteComfortApi,
 } from "../../lib/comfortsApi";
-import { appreciations } from "../../types/messaging";
+import { createConversationApi } from "../../lib/conversationsApi";
 import type { Appreciation, Comfort } from "../../types/messaging";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function errorText(err: unknown, fallback: string): string {
+  const e = err as { status?: number; message?: string } | null;
+  if (!e?.status) return "Check your connection and try again.";
+  return e.message || fallback;
+}
 
 export default function ComfortDetailPage() {
   const { messageId = "" } = useParams();
   const navigate = useNavigate();
+  const { ensureChatKey } = useChatKey();
+  const { showToast } = useToast();
 
-  const sampleComfort = getComfort(messageId);
-  const [comfort, setComfort] = useState<Comfort | null>(sampleComfort ?? null);
-  const [loading, setLoading] = useState(Boolean(!sampleComfort));
-  const [hasOpened, setHasOpened] = useState(
-    Boolean(sampleComfort && (sampleComfort.direction === "sent" || sampleComfort.firstOpenedAt !== null))
-  );
+  const [comfort, setComfort] = useState<Comfort | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<"notfound" | "failed" | null>(null);
+  const [hasOpened, setHasOpened] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
   const [submittingAppreciation, setSubmittingAppreciation] = useState(false);
+  const [appreciationError, setAppreciationError] = useState<string | null>(null);
+  const [replying, setReplying] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId);
-    if (!isUuid) {
+    if (!UUID_RE.test(messageId)) {
+      setComfort(null);
+      setLoadError("notfound");
       setLoading(false);
       return;
     }
 
     let active = true;
+    setLoading(true);
+    setLoadError(null);
     getComfortApi(messageId)
       .then((data) => {
         if (!active) return;
         setComfort(data);
-        if (data.direction === "sent" || data.firstOpenedAt !== null) {
-          setHasOpened(true);
-        }
+        setHasOpened(data.direction === "sent" || data.firstOpenedAt !== null);
       })
-      .catch(() => {
-        // Fallback to sample if exists
+      .catch((err: unknown) => {
+        if (!active) return;
+        setComfort(null);
+        setLoadError((err as { status?: number } | null)?.status === 404 ? "notfound" : "failed");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -66,20 +75,18 @@ export default function ComfortDetailPage() {
     };
   }, [messageId]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-deep" />
-      </div>
-    );
-  }
+  if (loading) return <ComfortDetailSkeleton />;
 
   if (!comfort) {
     return (
       <EmptyState
         icon={FileX}
-        title="We couldn't find that message"
-        text="It may have been removed."
+        title={loadError === "failed" ? "We couldn’t load that message" : "We couldn’t find that message"}
+        text={
+          loadError === "failed"
+            ? "Check your connection and try again."
+            : "It may have been removed."
+        }
         action={<PrimaryLink to="/comforts">Back to Comforts</PrimaryLink>}
       />
     );
@@ -88,68 +95,83 @@ export default function ComfortDetailPage() {
   const isSent = comfort.direction === "sent";
   const isReceived = comfort.direction === "received";
 
-  // Who is the other person?
   const person = isSent ? comfort.to : comfort.from;
   const personName = person.displayName ?? "Anonymous";
+  const myName = getUser()?.profile?.displayName ?? "A friend";
 
-  // Status line for sent comforts
-  const statusIcon = isSent
-    ? comfort.status === "opened"
-      ? CheckCheck
-      : Clock
-    : null;
-  const statusText = isSent
-    ? comfort.status === "opened"
-      ? "Opened"
-      : "Delivered"
-    : null;
+  const statusIcon = isSent ? (comfort.status === "opened" ? CheckCheck : Clock) : null;
+  const statusText = isSent ? (comfort.status === "opened" ? "Opened" : "Delivered") : null;
 
   async function handleOpen() {
+    setOpenError(null);
     try {
-      if (/^[0-9a-f-]{36}$/i.test(messageId)) {
-        const opened = await openComfortApi(messageId);
-        setComfort(opened);
-      } else {
-        markOpened(messageId);
-        setComfort((prev) =>
-          prev && prev.direction === "received"
-            ? { ...prev, firstOpenedAt: new Date().toISOString() }
-            : prev
-        );
-      }
-    } catch (err) {
-      console.error("Failed to mark comfort opened", err);
-    } finally {
+      const opened = await openComfortApi(messageId);
+      setComfort(opened);
       setHasOpened(true);
+    } catch (err: unknown) {
+      setOpenError(errorText(err, "We couldn’t open this Comfort. Please try again."));
     }
   }
 
   async function handleAppreciate(opt: Appreciation) {
     if (submittingAppreciation) return;
     setSubmittingAppreciation(true);
+    setAppreciationError(null);
     try {
-      if (/^[0-9a-f-]{36}$/i.test(messageId)) {
-        const updated = await appreciateComfortApi(messageId, opt);
-        setComfort(updated);
-      } else {
-        setAppreciation(messageId, opt);
-        setComfort((prev) =>
-          prev && prev.direction === "received"
-            ? { ...prev, appreciation: opt }
-            : prev
-        );
-      }
-    } catch (err) {
-      console.error("Failed to send appreciation", err);
+      const updated = await appreciateComfortApi(messageId, opt);
+      setComfort(updated);
+    } catch (err: unknown) {
+      setAppreciationError(errorText(err, "We couldn’t send your appreciation. Please try again."));
     } finally {
       setSubmittingAppreciation(false);
     }
   }
 
-  // First-time open envelope reveal experience
+  async function handleDelete() {
+    try {
+      await deleteComfortApi(messageId);
+    } catch (err: unknown) {
+      if ((err as { status?: number } | null)?.status !== 404) throw err;
+    }
+    showToast("Comfort deleted.");
+    navigate("/comforts", { state: { tab: isSent ? "sent" : "received" } });
+  }
+
+  // Replying starts an encrypted conversation, so the chat key comes first
+  async function handleReply() {
+    if (!isReceived || replying) return;
+    setReplyError(null);
+    setReplying(true);
+    try {
+      if (!(await ensureChatKey())) return;
+      const conversation = await createConversationApi(messageId);
+      navigate(`/comforts/conversations/${conversation.id}`);
+    } catch (err: unknown) {
+      if ((err as { status?: number } | null)?.status === 409) {
+        // A conversation may already exist (another tab, or a retry)
+        try {
+          const fresh = await getComfortApi(messageId);
+          if (fresh.direction === "received" && fresh.conversationId) {
+            navigate(`/comforts/conversations/${fresh.conversationId}`);
+            return;
+          }
+        } catch {
+          // Fall through to the message below
+        }
+      }
+      setReplyError(errorText(err, "We couldn’t start the conversation. Please try again."));
+    } finally {
+      setReplying(false);
+    }
+  }
+
+  function handleClose() {
+    navigate("/comforts", { state: { tab: isSent ? "sent" : "received" } });
+  }
+
   if (isReceived && !hasOpened) {
     return (
-      <div>
+      <div className="space-y-4">
         <Link
           to="/comforts"
           state={{ tab: "received" }}
@@ -158,24 +180,48 @@ export default function ComfortDetailPage() {
           <ArrowLeft aria-hidden className="h-4 w-4" strokeWidth={1.75} />
           Back to Comforts
         </Link>
-        <EnvelopeReveal
-          senderName={personName}
-          onOpened={handleOpen}
-        />
+        <EnvelopeReveal senderName={personName} onOpened={handleOpen} />
+        {openError ? (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f1f3fa] px-4 py-3">
+            <p role="alert" className="text-[0.8125rem] text-[#b4443a]">
+              {openError}
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleOpen()}
+              className="text-[0.8125rem] font-medium text-navy underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+            >
+              Try again
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
 
-  function handleReply() {
-    if (isReceived) {
-      const convoId = startConversation(messageId);
-      if (convoId) navigate(`/comforts/conversations/${convoId}`);
+  let replyAction = null;
+  let replyNote: string | undefined;
+  if (isReceived) {
+    if (comfort.conversationId) {
+      replyAction = (
+        <PrimaryLink to={`/comforts/conversations/${comfort.conversationId}`} className="gap-2">
+          <MessageCircle aria-hidden className="h-4 w-4" strokeWidth={2} />
+          Continue conversation
+        </PrimaryLink>
+      );
+    } else {
+      replyAction = (
+        <PrimaryButton onClick={() => void handleReply()} disabled={replying} className="gap-2">
+          <MessageCircle aria-hidden className="h-4 w-4" strokeWidth={2} />
+          {replying ? "Opening…" : person.isAnonymous ? "Reply" : `Reply to ${personName}`}
+        </PrimaryButton>
+      );
+      if (person.isAnonymous) replyNote = "They’ll stay anonymous in the conversation.";
     }
   }
 
   return (
-    <div className="space-y-5">
-      {/* Back */}
+    <div className="space-y-6">
       <Link
         to="/comforts"
         state={{ tab: isSent ? "sent" : "received" }}
@@ -185,109 +231,65 @@ export default function ComfortDetailPage() {
         {isSent ? "Sent" : "Received"}
       </Link>
 
-      {/* Message card */}
-      <article className="overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-sm">
-        {/* Card header */}
-        <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-4">
-          <div>
-            <p className="text-[0.75rem] font-semibold uppercase tracking-wider text-navy/40">
-              {isSent ? "You sent a Comfort to" : "Comfort from"}
+      <LetterView
+        senderName={isSent ? myName : person.isAnonymous ? "A kind stranger" : personName}
+        greetingName={isSent ? (person.isAnonymous ? "friend" : personName) : myName}
+        caption={
+          isSent
+            ? `You sent this to ${person.isAnonymous ? "an anonymous post" : personName}`
+            : "A Comfort for you"
+        }
+        date={comfort.sentAt}
+        body={comfort.body}
+        showReactions={isReceived}
+        appreciation={isReceived ? comfort.appreciation : null}
+        onAppreciate={(opt) => void handleAppreciate(opt)}
+        reactionsDisabled={submittingAppreciation}
+        reactionsError={appreciationError}
+        action={replyAction}
+        note={replyNote}
+        onClose={handleClose}
+      />
+
+      {replyError ? (
+        <p role="alert" className="text-center text-[0.8125rem] text-[#b4443a]">
+          {replyError}
+        </p>
+      ) : null}
+
+      {isSent && (statusText || comfort.appreciation) ? (
+        <div className="mx-auto max-w-sm space-y-1 text-center">
+          {statusText && statusIcon ? (
+            <div className="flex items-center justify-center gap-1.5">
+              {(() => {
+                const StatusIcon = statusIcon;
+                return <StatusIcon aria-hidden className="h-3.5 w-3.5 text-navy/40" strokeWidth={2} />;
+              })()}
+              <span className="text-[0.8125rem] text-navy/50">{statusText}</span>
+            </div>
+          ) : null}
+          {comfort.appreciation ? (
+            <p className="text-[0.8125rem] italic text-navy/60">
+              They said: &ldquo;{comfort.appreciation}&rdquo;
             </p>
-            <p className="mt-0.5 text-[1rem] font-semibold text-navy">
-              {isSent ? (person.isAnonymous ? "an anonymous post" : personName) : personName}
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-[#eef1fa] px-3 py-1">
-            {isSent ? (
-              <Send aria-hidden className="h-3.5 w-3.5 text-brand-deep" strokeWidth={1.75} />
-            ) : (
-              <MessageCircle aria-hidden className="h-3.5 w-3.5 text-brand-deep" strokeWidth={1.75} />
-            )}
-            <span className="text-[0.75rem] font-medium text-brand-deep">
-              {comfort.sentAt}
-            </span>
-          </div>
+          ) : null}
         </div>
+      ) : null}
 
-        {/* Message body */}
-        <div className="px-5 py-6">
-          <p className="whitespace-pre-line text-[1rem] leading-[1.7] text-navy/85">
-            {comfort.body}
-          </p>
-        </div>
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => setConfirmingDelete(true)}
+          className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[0.8125rem] font-medium text-navy/50 transition hover:text-[#b4443a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+        >
+          <Trash2 aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+          Delete this Comfort
+        </button>
+      </div>
 
-        {/* Footer */}
-        {(statusText || (isSent && comfort.appreciation)) && (
-          <div className="border-t border-black/[0.06] bg-[#f8f9fc] px-5 py-3">
-            {statusText && statusIcon && (
-              <div className="flex items-center gap-1.5">
-                {(() => {
-                  const StatusIcon = statusIcon;
-                  return <StatusIcon aria-hidden className="h-3.5 w-3.5 text-navy/40" strokeWidth={2} />;
-                })()}
-                <span className="text-[0.8125rem] text-navy/50">{statusText}</span>
-              </div>
-            )}
-            {isSent && comfort.appreciation && (
-              <p className="mt-1 text-[0.8125rem] italic text-navy/60">
-                They said: &ldquo;{comfort.appreciation}&rdquo;
-              </p>
-            )}
-          </div>
-        )}
-      </article>
-
-      {/* Actions for received comforts */}
-      {isReceived && (
-        <div className="space-y-4">
-          {/* Appreciation Pills */}
-          {!comfort.appreciation && (
-            <section className="space-y-2">
-              <p className="text-[0.8125rem] font-medium text-navy/70">
-                Send a quick appreciation back:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {appreciations.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    disabled={submittingAppreciation}
-                    onClick={() => handleAppreciate(opt)}
-                    className="rounded-full border border-black/[0.08] bg-white px-4 py-2 text-[0.875rem] font-medium text-navy transition hover:bg-[#eef1fa] hover:border-brand-deep/30 focus-visible:outline-2 focus-visible:outline-brand-deep disabled:opacity-50"
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {comfort.appreciation && (
-            <p className="rounded-2xl bg-[#eef1fa] px-4 py-3 text-[0.85rem] text-navy/70">
-              You replied with: <span className="font-semibold text-navy">&ldquo;{comfort.appreciation}&rdquo;</span>
-            </p>
-          )}
-
-          {/* Reply button — only if sender is not anonymous */}
-          {!person.isAnonymous && !comfort.conversationId && (
-            <PrimaryButton onClick={handleReply} className="gap-2">
-              <MessageCircle aria-hidden className="h-4 w-4" strokeWidth={2} />
-              Reply to {personName}
-            </PrimaryButton>
-          )}
-
-          {/* Go to existing conversation */}
-          {comfort.conversationId && (
-            <PrimaryLink
-              to={`/comforts/conversations/${comfort.conversationId}`}
-              className="gap-2"
-            >
-              <MessageCircle aria-hidden className="h-4 w-4" strokeWidth={2} />
-              Continue conversation
-            </PrimaryLink>
-          )}
-        </div>
-      )}
+      {confirmingDelete ? (
+        <DeleteComfortModal onClose={() => setConfirmingDelete(false)} onConfirm={handleDelete} />
+      ) : null}
     </div>
   );
 }

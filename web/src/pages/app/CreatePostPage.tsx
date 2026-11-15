@@ -1,22 +1,29 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserCircle2, Ghost } from "lucide-react";
 import { PrimaryButton } from "../../components/shared/PrimaryButton";
 import { useToast } from "../../hooks/useToast";
-import { addSamplePost } from "../../lib/samplePosts";
-import { getMyProfile } from "../../lib/sampleProfiles";
-import { postCategories } from "../../types/posts";
-import type { PostCategory } from "../../types/posts";
+import { apiRequest, getUser } from "../../lib/api";
 
-// ─── Character limit ──────────────────────────────────────────────────────────
 const MAX = 400;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const labelClass = "mb-2 block text-[0.8125rem] font-medium text-navy";
 
 const baseField =
   "w-full rounded-2xl border border-transparent bg-[#f1f3fa] px-4 py-3 text-[0.9rem] text-navy outline-none transition placeholder:text-navy/40 focus:ring-2 focus:ring-brand/40";
+
+type Category = { id: string; name: string };
+type CategoryState = "loading" | "ready" | "error";
+
+// Turn an API error into a readable message
+function postErrorMessage(err: unknown): string {
+  const e = err as { status?: number; message?: string } | null;
+  if (!e?.status) return "Check your connection and try again.";
+  if (e.status === 429) return "You're posting too fast. Please try again later.";
+  if (e.status === 422) return "Please check your post and try again.";
+  return e.message || "Failed to create post.";
+}
 
 function OptionButton({
   active,
@@ -25,7 +32,7 @@ function OptionButton({
 }: {
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <button
@@ -42,43 +49,72 @@ function OptionButton({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CreatePostPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const profile = getMyProfile();
+  const user = getUser();
+  const displayName = user?.profile?.displayName ?? "Friend";
 
   const [body, setBody] = useState("");
-  const [category, setCategory] = useState<PostCategory>("Encouragement");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryState, setCategoryState] = useState<CategoryState>("loading");
+  const [reloadKey, setReloadKey] = useState(0);
+  const [categoryId, setCategoryId] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [anonymous, setAnonymous] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const bodyError = submitted && body.trim().length === 0
-    ? "Please write something before posting."
-    : undefined;
+  // Load categories; reloadKey lets the user retry
+  useEffect(() => {
+    let active = true;
+    setCategoryState("loading");
+    apiRequest<{ items: Category[] }>("/api/v1/categories")
+      .then((res) => {
+        if (!active) return;
+        const cats = res.data?.items ?? [];
+        setCategories(cats);
+        setCategoryId((current) => current || cats[0]?.id || "");
+        setCategoryState(cats.length > 0 ? "ready" : "error");
+      })
+      .catch(() => {
+        if (active) setCategoryState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  const bodyError =
+    submitted && body.trim().length === 0 ? "Please write something before posting." : undefined;
 
   const remaining = MAX - body.length;
   const overLimit = remaining < 0;
+  const canSubmit = !overLimit && !saving && categoryState === "ready" && Boolean(categoryId);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
-    if (!body.trim() || overLimit) return;
+    if (!body.trim() || !canSubmit) return;
 
-    addSamplePost({
-      id: `p-${Date.now()}`,
-      authorName: anonymous ? null : profile.displayName,
-      authorUsername: anonymous ? null : profile.username,
-      mine: true,
-      postedAgo: "just now",
-      category,
-      body: body.trim(),
-      visibility,
-    });
-
-    showToast("Your post is live 💙");
-    navigate("/home");
+    setSaving(true);
+    try {
+      await apiRequest("/api/v1/posts", {
+        method: "POST",
+        body: JSON.stringify({
+          content: body.trim(),
+          categoryId,
+          isAnonymous: anonymous,
+          visibility,
+        }),
+      });
+      showToast("Your post is live 💙");
+      navigate("/home");
+    } catch (err: unknown) {
+      showToast(postErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -93,7 +129,6 @@ export default function CreatePostPage() {
       </section>
 
       <form noValidate onSubmit={handleSubmit} className="space-y-5">
-        {/* Body */}
         <div>
           <label htmlFor="post-body" className={labelClass}>
             What's on your mind?
@@ -107,9 +142,7 @@ export default function CreatePostPage() {
             placeholder="Write something kind, honest, or hopeful…"
             aria-invalid={Boolean(bodyError)}
             aria-describedby={bodyError ? "post-body-error" : undefined}
-            className={`${baseField} resize-none ${
-              bodyError ? "ring-2 ring-[#b4443a]/40" : ""
-            }`}
+            className={`${baseField} resize-none ${bodyError ? "ring-2 ring-[#b4443a]/40" : ""}`}
           />
           <div className="mt-1 flex items-center justify-between px-1">
             {bodyError ? (
@@ -129,33 +162,45 @@ export default function CreatePostPage() {
           </div>
         </div>
 
-        {/* Category */}
         <div>
           <label htmlFor="post-category" className={labelClass}>
             Category
           </label>
-          <select
-            id="post-category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value as PostCategory)}
-            className={`${baseField} cursor-pointer appearance-none`}
-          >
-            {postCategories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+          {categoryState === "error" ? (
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f1f3fa] px-4 py-3">
+              <p role="alert" className="text-[0.8125rem] text-[#b4443a]">
+                We couldn't load categories.
+              </p>
+              <button
+                type="button"
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="text-[0.8125rem] font-medium text-navy underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <select
+              id="post-category"
+              value={categoryId}
+              disabled={categoryState === "loading"}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className={`${baseField} cursor-pointer appearance-none disabled:opacity-60`}
+            >
+              {categoryState === "loading" && <option value="">Loading…</option>}
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
-        {/* Visibility */}
         <div>
           <p className={labelClass}>Visibility</p>
           <div className="flex gap-3">
-            <OptionButton
-              active={visibility === "public"}
-              onClick={() => setVisibility("public")}
-            >
+            <OptionButton active={visibility === "public"} onClick={() => setVisibility("public")}>
               <Eye aria-hidden className="h-4 w-4" strokeWidth={1.75} />
               Public
             </OptionButton>
@@ -174,7 +219,6 @@ export default function CreatePostPage() {
           </p>
         </div>
 
-        {/* Anonymous */}
         <div className="rounded-2xl border border-black/[0.06] bg-white p-4">
           <label className="flex cursor-pointer items-start gap-4">
             <span
@@ -184,9 +228,7 @@ export default function CreatePostPage() {
               onKeyDown={(e) => e.key === " " && setAnonymous((v) => !v)}
               onClick={() => setAnonymous((v) => !v)}
               className={`relative mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep ${
-                anonymous
-                  ? "border-brand-deep bg-brand-deep"
-                  : "border-black/25 bg-white"
+                anonymous ? "border-brand-deep bg-brand-deep" : "border-black/25 bg-white"
               }`}
             >
               {anonymous && (
@@ -214,22 +256,15 @@ export default function CreatePostPage() {
                 Post anonymously
               </span>
               <span className="mt-0.5 block text-[0.8125rem] text-navy/55">
-                {anonymous
-                  ? "Your name won't appear on this post."
-                  : `Posting as ${profile.displayName}.`}
+                {anonymous ? "Your name won't appear on this post." : `Posting as ${displayName}.`}
               </span>
             </div>
           </label>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col gap-3 sm:flex-row-reverse">
-          <PrimaryButton
-            type="submit"
-            className="w-full sm:w-auto"
-            disabled={overLimit}
-          >
-            Post
+          <PrimaryButton type="submit" className="w-full sm:w-auto" disabled={!canSubmit}>
+            {saving ? "Posting…" : "Post"}
           </PrimaryButton>
           <button
             type="button"
@@ -243,4 +278,3 @@ export default function CreatePostPage() {
     </div>
   );
 }
-

@@ -45,6 +45,11 @@ const columns = (viewerId: string) => ({
     where (${blocks.blockerId} = ${viewerId} and ${blocks.blockedId} = ${otherP.userId})
        or (${blocks.blockerId} = ${otherP.userId} and ${blocks.blockedId} = ${viewerId})
   )`,
+  // True only for the person who placed the block
+  blockedByMe: sql<boolean>`exists (
+    select 1 from ${blocks}
+    where ${blocks.blockerId} = ${viewerId} and ${blocks.blockedId} = ${otherP.userId}
+  )`,
   hasUnread: sql<boolean>`exists (
     select 1 from ${messages}
     where ${messages.conversationId} = ${conversations.id}
@@ -74,12 +79,19 @@ export async function findConversationFor(id: string, viewerId: string) {
 
 export function listConversations(opts: { viewerId: string; limit: number; cursor?: Cursor }) {
   const sortExpr = sql`coalesce(${conversations.lastMessageAt}, ${conversations.createdAt})`;
-  const conditions: SQL[] = [];
+  // Hide conversations the viewer deleted, unless a newer message has arrived
+  const conditions: SQL[] = [
+    sql`(${meP.clearedAt} is null or exists (
+      select 1 from ${messages}
+      where ${messages.conversationId} = ${conversations.id}
+        and ${messages.createdAt} > ${meP.clearedAt}
+    ))`,
+  ];
   if (opts.cursor) {
     conditions.push(sql`(${sortExpr}, ${conversations.id}) < (${opts.cursor.ts}::timestamptz, ${opts.cursor.id}::uuid)`);
   }
   return base(opts.viewerId)
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(sql`${sortExpr} desc`, desc(conversations.id))
     .limit(opts.limit + 1);
 }
@@ -119,7 +131,16 @@ export function insertConversation(comfortId: string, senderId: string, recipien
 }
 
 export function listMessages(opts: { conversationId: string; viewerId: string; limit: number; cursor?: Cursor }) {
-  const conditions: SQL[] = [eq(messages.conversationId, opts.conversationId)];
+  const conditions: SQL[] = [
+    eq(messages.conversationId, opts.conversationId),
+    // Only messages newer than this person's last delete
+    sql`${messages.createdAt} > coalesce(
+      (select ${conversationParticipants.clearedAt} from ${conversationParticipants}
+       where ${conversationParticipants.conversationId} = ${opts.conversationId}
+         and ${conversationParticipants.userId} = ${opts.viewerId}),
+      '-infinity'::timestamptz
+    )`,
+  ];
   if (opts.cursor) {
     conditions.push(sql`(${messages.createdAt}, ${messages.id}) < (${opts.cursor.ts}::timestamptz, ${opts.cursor.id}::uuid)`);
   }
@@ -174,6 +195,16 @@ export async function markRead(conversationId: string, userId: string) {
     .where(and(eq(conversationParticipants.conversationId, conversationId), eq(conversationParticipants.userId, userId)))
     .returning({ readAt: conversationParticipants.lastReadAt });
   return row?.readAt ?? null;
+}
+
+// "Delete for me": hide everything up to now for this participant only
+export async function clearConversation(conversationId: string, userId: string) {
+  const rows = await db
+    .update(conversationParticipants)
+    .set({ clearedAt: sql`now()`, lastReadAt: sql`now()` })
+    .where(and(eq(conversationParticipants.conversationId, conversationId), eq(conversationParticipants.userId, userId)))
+    .returning({ id: conversationParticipants.id });
+  return rows.length > 0;
 }
 
 export type ConversationRow = NonNullable<Awaited<ReturnType<typeof findConversationFor>>>;

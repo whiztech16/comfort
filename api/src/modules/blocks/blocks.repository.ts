@@ -1,6 +1,19 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "../../db";
-import { blocks, comforts, profiles, userSettings, users } from "../../db/schema";
+import {
+  blocks,
+  comforts,
+  conversationParticipants,
+  conversations,
+  posts,
+  profiles,
+  userSettings,
+  users,
+} from "../../db/schema";
+
+const meP = alias(conversationParticipants, "me_p");
+const otherP = alias(conversationParticipants, "other_p");
 
 export async function findBlockableUser(username: string) {
   const [row] = await db
@@ -18,6 +31,25 @@ export async function findReceivedComfortSender(comfortId: string, recipientId: 
     .select({ senderId: comforts.senderId, isAnonymous: comforts.isAnonymous })
     .from(comforts)
     .where(and(eq(comforts.id, comfortId), eq(comforts.recipientId, recipientId)))
+    .limit(1);
+  return row ?? null;
+}
+
+// The other participant of a conversation the viewer belongs to
+export async function findConversationCounterpart(conversationId: string, viewerId: string) {
+  const [row] = await db
+    .select({
+      counterpartId: otherP.userId,
+      comfortSenderId: comforts.senderId,
+      comfortIsAnonymous: comforts.isAnonymous,
+      postIsAnonymous: posts.isAnonymous,
+    })
+    .from(conversations)
+    .innerJoin(meP, and(eq(meP.conversationId, conversations.id), eq(meP.userId, viewerId)))
+    .innerJoin(otherP, and(eq(otherP.conversationId, conversations.id), ne(otherP.userId, viewerId)))
+    .innerJoin(comforts, eq(comforts.id, conversations.sourceComfortId))
+    .leftJoin(posts, eq(posts.id, comforts.postId))
+    .where(eq(conversations.id, conversationId))
     .limit(1);
   return row ?? null;
 }
@@ -55,4 +87,9 @@ export async function deleteBlock(id: string, blockerId: string) {
     .where(and(eq(blocks.id, id), eq(blocks.blockerId, blockerId)))
     .returning({ id: blocks.id });
   return rows.length > 0;
+}
+
+// Used by the chat menu, which knows the conversation but not the block ID
+export async function deleteBlockBetween(blockerId: string, blockedId: string) {
+  await db.delete(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId)));
 }

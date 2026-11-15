@@ -1,19 +1,37 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, UserX, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, UserX, ShieldCheck } from "lucide-react";
 import Avatar from "../../components/shared/Avatar";
 import { EmptyState } from "../../components/shared/States";
 import { useToast } from "../../hooks/useToast";
-import { getBlockedUsers, unblockUser } from "../../lib/sampleProfiles";
+import { listBlocksApi, unblockApi } from "../../lib/blocksApi";
+import type { ApiBlock } from "../../lib/blocksApi";
 
 export default function BlockedUsersPage() {
   const { showToast } = useToast();
-  const [blockedList, setBlockedList] = useState(getBlockedUsers());
+  const [blocks, setBlocks] = useState<ApiBlock[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [unblocking, setUnblocking] = useState<string | null>(null);
 
-  function handleUnblock(username: string, displayName: string) {
-    unblockUser(username);
-    setBlockedList(getBlockedUsers());
-    showToast(`Unblocked ${displayName}.`);
+  useEffect(() => {
+    listBlocksApi()
+      .then(setBlocks)
+      .catch(() => setBlocks([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleUnblock(blockId: string, name: string) {
+    setUnblocking(blockId);
+    try {
+      await unblockApi(blockId);
+      setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+      showToast(`Unblocked ${name}.`);
+    } catch (err: unknown) {
+      const message = (err as { message?: string } | null)?.message;
+      showToast(message || "Failed to unblock.");
+    } finally {
+      setUnblocking(null);
+    }
   }
 
   return (
@@ -35,7 +53,11 @@ export default function BlockedUsersPage() {
         </p>
       </section>
 
-      {blockedList.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-deep" />
+        </div>
+      ) : blocks.length === 0 ? (
         <EmptyState
           icon={UserX}
           title="No blocked users"
@@ -44,43 +66,42 @@ export default function BlockedUsersPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
           <ul className="divide-y divide-black/[0.05]">
-            {blockedList.map((user) => (
-              <li
-                key={user.id}
-                className="flex items-center justify-between gap-3 p-4 transition hover:bg-[#fafbfe]"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Avatar name={user.displayName} />
-                  <div className="min-w-0">
-                    <p className="truncate text-[0.9375rem] font-semibold text-navy">
-                      {user.displayName}
-                    </p>
-                    <p className="text-[0.75rem] text-navy/50">
-                      @{user.username} · Blocked {user.blockedAt}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleUnblock(user.username, user.displayName)}
-                  className="rounded-full border border-black/[0.12] bg-white px-4 py-1.5 text-[0.8125rem] font-medium text-navy transition hover:bg-[#f1f3fa] focus-visible:outline-2 focus-visible:outline-brand-deep"
+            {blocks.map((block) => {
+              const { displayName, username, isAnonymous } = block.user;
+              return (
+                <li
+                  key={block.id}
+                  className="flex items-center justify-between gap-3 p-4 transition hover:bg-[#fafbfe]"
                 >
-                  Unblock
-                </button>
-              </li>
-            ))}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar name={isAnonymous ? null : displayName} />
+                    <div className="min-w-0">
+                      <p className="truncate text-[0.9375rem] font-semibold text-navy">{displayName}</p>
+                      {username ? <p className="text-[0.75rem] text-navy/50">@{username}</p> : null}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUnblock(block.id, displayName).catch(() => undefined);
+                    }}
+                    disabled={unblocking === block.id}
+                    className="rounded-full border border-black/[0.12] bg-white px-4 py-1.5 text-[0.8125rem] font-medium text-navy transition hover:bg-[#f1f3fa] focus-visible:outline-2 focus-visible:outline-brand-deep disabled:opacity-50"
+                  >
+                    {unblocking === block.id ? "Unblocking…" : "Unblock"}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
 
       <div className="flex items-center gap-3 rounded-2xl bg-[#f1f3fa] p-4 text-[0.8125rem] text-navy/70">
         <ShieldCheck className="h-5 w-5 shrink-0 text-brand-deep" strokeWidth={1.75} />
-        <span>
-          Blocking is confidential. We never notify someone when you block them.
-        </span>
+        <span>Blocking is confidential. We never notify someone when you block them.</span>
       </div>
     </div>
   );
 }
-

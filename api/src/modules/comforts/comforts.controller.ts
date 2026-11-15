@@ -41,3 +41,9 @@ export const appreciate: RequestHandler = asyncHandler(async (req, res) => {
   const comfort = await service.appreciateComfort(req.auth!.userId, id, appreciationSchema.parse(req.body));
   send(res, 200, { comfort }, "Appreciation sent");
 });
+
+export const remove: RequestHandler = asyncHandler(async (req, res) => {
+  const { id } = comfortParamsSchema.parse(req.params);
+  await service.deleteComfort(req.auth!.userId, id);
+  send(res, 200, {}, "Comfort deleted");
+});

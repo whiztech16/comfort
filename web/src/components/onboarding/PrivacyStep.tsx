@@ -1,4 +1,4 @@
-import { Info } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 import OnboardingShell from "./OnboardingShell";
 import Toggle from "../shared/Toggle";
 import { PrimaryButton } from "../shared/PrimaryButton";

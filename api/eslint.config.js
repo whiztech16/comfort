@@ -1,37 +1,21 @@
-// @ts-check
-import js from '@eslint/js';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
-import security from 'eslint-plugin-security';
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import security from "eslint-plugin-security";
 
-export default [
+export default tseslint.config(
+  { ignores: ["dist", "node_modules", "coverage", "src/db/migrations"] },
   js.configs.recommended,
+  ...tseslint.configs.recommended,
   security.configs.recommended,
   {
-    files: ['src/**/*.ts'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        project: './tsconfig.json',
-        sourceType: 'module',
-      },
-    },
-    plugins: {
-      '@typescript-eslint': tsPlugin,
-      security,
-    },
+    files: ["src/**/*.ts"],
     rules: {
-      ...tsPlugin.configs.recommended.rules,
-      'no-console': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'security/detect-object-injection': 'warn',
-      'security/detect-non-literal-regexp': 'error',
-      'security/detect-non-literal-fs-filename': 'warn',
+      "@typescript-eslint/no-explicit-any": "error", // PRD: no any in services or repositories
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
+      "security/detect-object-injection": "off", // flags every obj[key]; too noisy to be useful
     },
   },
-  {
-    ignores: ['dist/**', 'node_modules/**', 'tests/**'],
-  },
-];
-
+);

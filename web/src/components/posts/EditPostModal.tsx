@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Modal from "../shared/Modal";
 import { useToast } from "../../hooks/useToast";
-import { editPost } from "../../lib/samplePosts";
+import { apiRequest } from "../../lib/api";
 
 const MAX = 400;
 
@@ -15,17 +15,28 @@ type Props = Readonly<{
 export default function EditPostModal({ postId, initialBody, onClose, onSaved }: Props) {
   const { showToast } = useToast();
   const [body, setBody] = useState(initialBody);
+  const [saving, setSaving] = useState(false);
 
   const remaining = MAX - body.length;
   const overLimit = remaining < 0;
   const empty = body.trim().length === 0;
 
-  function handleSave() {
-    if (empty || overLimit) return;
-    editPost(postId, body.trim());
-    showToast("Post updated.");
-    onSaved(body.trim());
-    onClose();
+  async function handleSave() {
+    if (empty || overLimit || saving) return;
+    setSaving(true);
+    try {
+      await apiRequest(`/api/v1/posts/${postId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content: body.trim() }),
+      });
+      showToast("Post updated.");
+      onSaved(body.trim());
+      onClose();
+    } catch (err: any) {
+      showToast(err.message || "Failed to update post.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -52,10 +63,10 @@ export default function EditPostModal({ postId, initialBody, onClose, onSaved }:
           <button
             type="button"
             onClick={handleSave}
-            disabled={empty || overLimit}
+            disabled={empty || overLimit || saving}
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-b from-[#527a9f] to-[#3f5f80] px-8 text-[0.9rem] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4a6b8c] disabled:opacity-60 sm:w-auto"
           >
-            Save changes
+            {saving ? "Saving…" : "Save changes"}
           </button>
           <button
             type="button"
@@ -69,4 +80,3 @@ export default function EditPostModal({ postId, initialBody, onClose, onSaved }:
     </Modal>
   );
 }
-

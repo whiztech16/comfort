@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   PenLine,
@@ -16,8 +16,15 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import Modal from "../../components/shared/Modal";
-import { getMyProfile } from "../../lib/sampleProfiles";
-import { logoutApi } from "../../lib/api";
+import { useToast } from "../../hooks/useToast";
+import { apiRequest, getUser, logoutApi } from "../../lib/api";
+import type { UserState } from "../../lib/api";
+
+type NotifySettings = {
+  notifyNewComforts: boolean;
+  notifyNewMessages: boolean;
+  notifyAppreciation: boolean;
+};
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -179,11 +186,41 @@ function SignOutModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: 
   );
 }
 
+// Turn a failed delete into a message the user can act on
+function deleteErrorMessage(err: unknown): string {
+  const e = err as { status?: number; message?: string } | null;
+  if (e?.status === 400) return "That password isn't right.";
+  if (e?.status === 429) return "Too many attempts. Please wait a while and try again.";
+  if (e?.status === 422) return "Enter your password to continue.";
+  return e?.message || "We couldn't delete your account. Please try again.";
+}
+
 // --- Delete-account confirmation modal ---------------------------------------
-function DeleteModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => void }) {
-  const profile = getMyProfile();
-  const [email, setEmail] = useState("");
-  const confirmed = email.trim().toLowerCase() === profile.email.toLowerCase();
+function DeleteModal({
+  onClose,
+  onConfirm,
+}: {
+  onClose: () => void;
+  onConfirm: (password: string) => Promise<void>;
+}) {
+  // Accounts created with Google have no password to confirm with
+  const user = getUser() as (UserState & { hasPassword?: boolean }) | null;
+  const noPassword = user?.hasPassword === false;
+
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleDelete() {
+    setLoading(true);
+    setError(null);
+    try {
+      await onConfirm(password);
+    } catch (err: unknown) {
+      setError(deleteErrorMessage(err));
+      setLoading(false);
+    }
+  }
 
   return (
     <Modal
@@ -200,36 +237,49 @@ function DeleteModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
             strokeWidth={1.75}
           />
           <p className="text-[0.875rem] leading-snug text-navy/70">
-            Enter the email address linked to your account to confirm you want to permanently delete it.
+            {noPassword
+              ? "Your account uses Google sign-in and has no password yet. Use “Forgot password” on the login screen to set one, then come back here to delete your account."
+              : "Enter your password to confirm you want to permanently delete your account."}
           </p>
         </div>
 
-        <div>
-          <label
-            htmlFor="delete-email"
-            className="mb-2 block text-[0.8125rem] font-medium text-navy"
-          >
-            Your email address
-          </label>
-          <input
-            id="delete-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            autoComplete="email"
-            className="w-full rounded-full border border-transparent bg-[#f1f3fa] px-5 py-3 text-[0.9rem] text-navy outline-none transition focus:ring-2 focus:ring-[#b4443a]/30 placeholder:text-navy/40"
-          />
-        </div>
+        {!noPassword ? (
+          <div>
+            <label
+              htmlFor="delete-password"
+              className="mb-2 block text-[0.8125rem] font-medium text-navy"
+            >
+              Your password
+            </label>
+            <input
+              id="delete-password"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError(null);
+              }}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              aria-invalid={Boolean(error)}
+              className="w-full rounded-full border border-transparent bg-[#f1f3fa] px-5 py-3 text-[0.9rem] text-navy outline-none transition focus:ring-2 focus:ring-[#b4443a]/30 placeholder:text-navy/40"
+            />
+            {error ? (
+              <p role="alert" className="mt-2 px-1 text-[0.8125rem] text-[#b4443a]">
+                {error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row-reverse">
           <button
             type="button"
-            onClick={onConfirm}
-            disabled={!confirmed}
+            onClick={handleDelete}
+            disabled={noPassword || !password || loading}
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#b4443a] px-8 text-[0.9rem] font-semibold text-white transition hover:bg-[#9e3a31] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b4443a] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
-            Delete my account
+            {loading ? "Deleting..." : "Delete my account"}
           </button>
           <button
             type="button"
@@ -247,15 +297,53 @@ function DeleteModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [showSignOut, setShowSignOut] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
 
-  // Notification toggles
-  const [notifyComforts, setNotifyComforts] = useState(true);
-  const [notifyMessages, setNotifyMessages] = useState(true);
-  const [notifyAppreciation, setNotifyAppreciation] = useState(true);
+  // Notification toggles live on the server
+  const [notify, setNotify] = useState<NotifySettings>({
+    notifyNewComforts: true,
+    notifyNewMessages: true,
+    notifyAppreciation: true,
+  });
+  // Dark mode is not built yet, so it stays local
   const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest<{ settings: NotifySettings }>("/api/v1/settings")
+      .then((res) => {
+        const s = res.data?.settings;
+        if (active && s) {
+          setNotify({
+            notifyNewComforts: s.notifyNewComforts,
+            notifyNewMessages: s.notifyNewMessages,
+            notifyAppreciation: s.notifyAppreciation,
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Switch right away, then undo with a message if saving fails
+  async function updateNotify(key: keyof NotifySettings, value: boolean) {
+    const previous = notify[key];
+    setNotify((s) => ({ ...s, [key]: value }));
+    try {
+      await apiRequest("/api/v1/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ [key]: value }),
+      });
+    } catch (err: any) {
+      setNotify((s) => ({ ...s, [key]: previous }));
+      showToast(err?.message || "Couldn't save that setting.");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -330,22 +418,22 @@ export default function SettingsPage() {
           icon={Bell}
           label="New Comforts received"
           sub="When someone sends you a Comfort"
-          checked={notifyComforts}
-          onChange={setNotifyComforts}
+          checked={notify.notifyNewComforts}
+          onChange={(v) => updateNotify("notifyNewComforts", v)}
         />
         <ToggleRow
           icon={MessageCircle}
           label="New private messages"
-          sub="When a Comfort conversation starts"
-          checked={notifyMessages}
-          onChange={setNotifyMessages}
+          sub="When you get a private message"
+          checked={notify.notifyNewMessages}
+          onChange={(v) => updateNotify("notifyNewMessages", v)}
         />
         <ToggleRow
           icon={Bell}
           label="Appreciation responses"
           sub="When someone replies to your post with warmth"
-          checked={notifyAppreciation}
-          onChange={setNotifyAppreciation}
+          checked={notify.notifyAppreciation}
+          onChange={(v) => updateNotify("notifyAppreciation", v)}
         />
         <ToggleRow
           icon={Sun}
@@ -369,8 +457,14 @@ export default function SettingsPage() {
       {showDelete && (
         <DeleteModal
           onClose={() => setShowDelete(false)}
-          onConfirm={async () => {
-            await logoutApi();
+          onConfirm={async (password) => {
+            // A wrong password throws here, so the modal shows it and nothing is logged out
+            await apiRequest("/api/v1/users/me", {
+              method: "DELETE",
+              body: JSON.stringify({ password }),
+            });
+            // The account is already gone; a failed sign-out call must not block leaving
+            await logoutApi().catch(() => {});
             navigate("/login");
           }}
         />

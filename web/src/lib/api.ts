@@ -2,6 +2,17 @@ import { isPrivateDevice, removeLocalKey } from "./chatKeys";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
+// A 401 on these routes means "wrong credentials", not "session expired":
+// show the error instead of trying to refresh and redirecting to /login
+const NO_REFRESH = [
+  "/api/v1/auth/login",
+  "/api/v1/auth/register",
+  "/api/v1/auth/google",
+  "/api/v1/auth/refresh",
+  "/api/v1/auth/forgot-password",
+  "/api/v1/auth/reset-password",
+];
+
 export interface UserState {
   id: string;
   email: string;
@@ -52,9 +63,36 @@ export function getUser(): UserState | null {
   return inMemoryUser;
 }
 
-export async function apiRequest<T = any>(
+let _refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) return false;
+      const json = await res.json().catch(() => ({}));
+      if (json.data?.accessToken) {
+        setAccessToken(json.data.accessToken);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
+}
+
+async function doFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit
 ): Promise<{ success: boolean; message?: string; data?: T; code?: string; errors?: any[] }> {
   const headers = new Headers(options.headers || {});
 
@@ -69,17 +107,11 @@ export async function apiRequest<T = any>(
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
-    credentials: "include", // preserves refresh cookie
+    credentials: "include",
   });
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    // If token expired, clear memory
-    if (res.status === 401 && (json.code === "TOKEN_EXPIRED" || json.code === "UNAUTHENTICATED")) {
-      setAccessToken(null);
-      setUser(null);
-    }
-
     throw {
       status: res.status,
       code: json.code || "UNKNOWN_ERROR",
@@ -89,6 +121,37 @@ export async function apiRequest<T = any>(
   }
 
   return json;
+}
+
+export async function apiRequest<T = any>(
+  path: string,
+  options: RequestInit = {}
+): Promise<{ success: boolean; message?: string; data?: T; code?: string; errors?: any[] }> {
+  try {
+    return await doFetch<T>(path, options);
+  } catch (err: any) {
+    if (
+      err.status === 401 &&
+      !NO_REFRESH.includes(path) &&
+      (err.code === "TOKEN_EXPIRED" || err.code === "UNAUTHENTICATED")
+    ) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        try {
+          return await doFetch<T>(path, options);
+        } catch (retryErr: any) {
+          setAccessToken(null);
+          setUser(null);
+          throw retryErr;
+        }
+      }
+      setAccessToken(null);
+      setUser(null);
+      window.location.href = "/login";
+      throw err;
+    }
+    throw err;
+  }
 }
 
 export async function fetchMe(): Promise<UserState | null> {

@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: comfort
+      POSTGRES_PASSWORD: comfort
+      POSTGRES_DB: comfort
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U comfort"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    profiles: ["redis"]
+    ports: ["6379:6379"]
+
+  migrate:
+    build:
+      context: .
+      args:
+        PNPM_VERSION: 12.11.2
+    command: ["node", "dist/db/migrate.js"]
+    environment:
+      DATABASE_URL_UNPOOLED: postgres://comfort:comfort@db:5432/comfort
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    build:
+      context: .
+      args:
+        PNPM_VERSION: 12.11.2
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://comfort:comfort@db:5432/comfort
+      DATABASE_URL_UNPOOLED: postgres://comfort:comfort@db:5432/comfort
+    ports: ["3000:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  pgdata:

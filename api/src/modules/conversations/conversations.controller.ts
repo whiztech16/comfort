@@ -15,7 +15,8 @@ const send = (res: Response, status: number, data: unknown, message = "OK") => {
 
 export const create: RequestHandler = asyncHandler(async (req, res) => {
   const { comfortId } = createConversationSchema.parse(req.body);
-  send(res, 201, { conversation: await service.createConversation(req.auth!.userId, comfortId) }, "Conversation created");
+  const conversation = await service.createConversation(req.auth!.userId, comfortId);
+  send(res, 201, { conversation }, "Conversation created");
 });
 
 export const list: RequestHandler = asyncHandler(async (req, res) => {
@@ -41,4 +42,10 @@ export const sendMessage: RequestHandler = asyncHandler(async (req, res) => {
 export const markRead: RequestHandler = asyncHandler(async (req, res) => {
   const { id } = conversationParamsSchema.parse(req.params);
   send(res, 200, await service.markRead(req.auth!.userId, id));
+});
+
+export const remove: RequestHandler = asyncHandler(async (req, res) => {
+  const { id } = conversationParamsSchema.parse(req.params);
+  await service.deleteConversation(req.auth!.userId, id);
+  send(res, 200, {}, "Conversation deleted");
 });

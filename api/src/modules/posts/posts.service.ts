@@ -12,6 +12,7 @@ function toPostDto(row: repo.PostRow) {
     content: row.content,
     createdAt: row.createdAt,
     isMine: row.isMine,
+    visibility: row.visibility,
     category: row.category,
     author: toPublicIdentity({ isAnonymous: row.isAnonymous, profile: row.profile }),
   };
@@ -69,6 +70,7 @@ export async function deletePost(userId: string, id: string) {
   const deleted = await repo.softDeleteOwnPost(id, userId);
   if (!deleted) throw notFound();
 }
+
 export async function getAuthorPosts(opts: {
   viewerId: string;
   authorId: string;
@@ -102,4 +104,11 @@ export async function getAuthorPosts(opts: {
     nextCursor: hasMore && last ? encodeCursor({ ts: last.cursorTs, id: last.id }) : null,
     hasMore,
   };
+}
+
+export async function updatePost(userId: string, id: string, content: string) {
+  if (!(await repo.updateOwnPostContent(id, userId, content))) throw notFound();
+  const row = await repo.findVisiblePost(id, userId);
+  if (!row) throw notFound();
+  return toPostDto(row);
 }

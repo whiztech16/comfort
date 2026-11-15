@@ -1,8 +1,7 @@
-import { getMyProfile } from "./sampleProfiles";
+import { getUser } from "./api";
 
-// Temporary: this will come from the logged-in person's account
 export const currentUser = {
   get name() {
-    return getMyProfile().displayName;
+    return getUser()?.profile?.displayName ?? "A friend";
   },
 };

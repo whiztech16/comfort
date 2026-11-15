@@ -5,11 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import Avatar from "../../components/shared/Avatar";
 import { PrimaryButton } from "../../components/shared/PrimaryButton";
 import { useToast } from "../../hooks/useToast";
-import {
-  getMyProfile,
-  isUsernameTaken,
-  updateMyProfile,
-} from "../../lib/sampleProfiles";
+import { apiRequest, getUser, setUser } from "../../lib/api";
+import type { UserState } from "../../lib/api";
 
 const labelClass = "mb-2 block text-[0.8125rem] font-medium text-navy";
 
@@ -21,41 +18,80 @@ const badBorder = "border-[#b4443a] focus:ring-[#b4443a]/20";
 
 const errorClass = "mt-2 px-1 text-[0.8125rem] text-[#b4443a]";
 
+type FieldErrors = { displayName?: string; username?: string };
+
 export default function EditProfilePage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const profile = getMyProfile();
+  const user = getUser();
+  const profile = user?.profile;
 
-  const [displayName, setDisplayName] = useState(profile.displayName);
-  const [username, setUsername] = useState(profile.username);
-  const [bio, setBio] = useState(profile.bio);
+  const [displayName, setDisplayName] = useState(profile?.displayName ?? "");
+  const [username, setUsername] = useState(profile?.username ?? "");
+  const [bio, setBio] = useState(profile?.bio ?? "");
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  // Errors that come back from the API (for example, a taken username)
+  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
 
-  const errors: { displayName?: string; username?: string } = {};
+  // Same rules as the API: names 1-50 characters, usernames start with a letter
+  const errors: FieldErrors = {};
   if (displayName.trim().length < 2) {
     errors.displayName = "Please enter at least 2 characters.";
   }
-  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-    errors.username = "Use 3 to 20 letters, numbers or underscores.";
-  } else if (username !== profile.username && isUsernameTaken(username)) {
-    errors.username = "That username is taken.";
+  if (!/^[a-z][a-z0-9_]{2,19}$/.test(username)) {
+    errors.username = "Use 3 to 20 letters, numbers or underscores, starting with a letter.";
   }
 
-  const nameError = submitted ? errors.displayName : undefined;
-  const usernameError = submitted ? errors.username : undefined;
+  const nameError = submitted ? (errors.displayName ?? serverErrors.displayName) : undefined;
+  const usernameError = submitted ? (errors.username ?? serverErrors.username) : undefined;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
+    setServerErrors({});
     if (errors.displayName || errors.username) return;
 
-    updateMyProfile({
-      displayName: displayName.trim(),
-      username,
-      bio: bio.trim(),
-    });
-    showToast("Profile updated.");
-    navigate("/profile");
+    // Send only what changed: the API rejects an empty update
+    const patch: { displayName?: string; username?: string; bio?: string } = {};
+    if (displayName.trim() !== (profile?.displayName ?? "")) patch.displayName = displayName.trim();
+    if (username !== (profile?.username ?? "")) patch.username = username;
+    if (bio.trim() !== (profile?.bio ?? "")) patch.bio = bio.trim(); // "" clears the bio
+
+    if (Object.keys(patch).length === 0) {
+      navigate("/profile");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await apiRequest<{ profile: NonNullable<UserState["profile"]> }>(
+        "/api/v1/users/me/profile",
+        {
+          method: "PATCH",
+          body: JSON.stringify(patch),
+        },
+      );
+      if (res.data?.profile && user) {
+        setUser({ ...user, profile: res.data.profile });
+      }
+      showToast("Profile updated.");
+      navigate("/profile");
+    } catch (err: any) {
+      const fields: FieldErrors = {};
+      for (const e of err.errors ?? []) {
+        if (e.path === "displayName" || e.path === "username") {
+          fields[e.path as keyof FieldErrors] = e.message;
+        }
+      }
+      if (err.status === 409) fields.username = "That username is taken.";
+      setServerErrors(fields);
+      if (!fields.displayName && !fields.username) {
+        showToast(err.message || "Failed to save profile.");
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -77,7 +113,6 @@ export default function EditProfilePage() {
         </p>
       </section>
 
-      {/* Initials Avatar Preview (no photo upload) */}
       <div className="flex items-center gap-4 rounded-3xl border border-black/[0.06] bg-[#f8fafd] p-4">
         <Avatar name={displayName || "A"} size="lg" />
         <div className="min-w-0 flex-1">
@@ -99,7 +134,10 @@ export default function EditProfilePage() {
             id="edit-display-name"
             type="text"
             value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
+            onChange={(event) => {
+              setDisplayName(event.target.value);
+              setServerErrors((prev) => ({ ...prev, displayName: undefined }));
+            }}
             maxLength={40}
             autoComplete="nickname"
             aria-invalid={Boolean(nameError)}
@@ -128,9 +166,10 @@ export default function EditProfilePage() {
               id="edit-username"
               type="text"
               value={username}
-              onChange={(event) =>
-                setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))
-              }
+              onChange={(event) => {
+                setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+                setServerErrors((prev) => ({ ...prev, username: undefined }));
+              }}
               maxLength={20}
               autoComplete="username"
               autoCapitalize="none"
@@ -160,14 +199,12 @@ export default function EditProfilePage() {
             placeholder="A line about you"
             className={`${fieldBase} ${okBorder} resize-none rounded-2xl px-5 py-3`}
           />
-          <p className="mt-1 px-1 text-right text-[0.75rem] text-navy/50">
-            {bio.length}/160
-          </p>
+          <p className="mt-1 px-1 text-right text-[0.75rem] text-navy/50">{bio.length}/160</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row-reverse">
-          <PrimaryButton type="submit" className="w-full sm:w-auto">
-            Save changes
+          <PrimaryButton type="submit" disabled={saving} className="w-full sm:w-auto">
+            {saving ? "Saving..." : "Save changes"}
           </PrimaryButton>
           <button
             type="button"

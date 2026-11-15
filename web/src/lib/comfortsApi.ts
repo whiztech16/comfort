@@ -48,7 +48,7 @@ export function formatApiComfort(c: any): Comfort {
       sentAt,
       firstOpenedAt: c.isOpened ? (c.openedAt || c.createdAt) : null,
       appreciation,
-      conversationId: null,
+      conversationId: c.conversationId ?? null,
     } as ReceivedComfort;
   }
 
@@ -63,7 +63,14 @@ export function formatApiComfort(c: any): Comfort {
     sentAt,
     status: c.isOpened ? "opened" : "delivered",
     appreciation,
+    conversationId: c.conversationId ?? null,
   } as SentComfort;
+}
+
+// Fail clearly if the API returns no comfort
+function requireComfort(c: any): Comfort {
+  if (!c) throw new Error("Comfort not found in response");
+  return formatApiComfort(c);
 }
 
 export async function sendComfortApi(postId: string, content: string, isAnonymous: boolean) {
@@ -108,14 +115,14 @@ export async function listSentComfortsApi(limit = 20, cursor?: string) {
 
 export async function getComfortApi(id: string): Promise<Comfort> {
   const res = await apiRequest<{ comfort: any }>(`/api/v1/comforts/${id}`);
-  return formatApiComfort(res.data?.comfort);
+  return requireComfort(res.data?.comfort);
 }
 
 export async function openComfortApi(id: string): Promise<Comfort> {
   const res = await apiRequest<{ comfort: any }>(`/api/v1/comforts/${id}/open`, {
     method: "POST",
   });
-  return formatApiComfort(res.data?.comfort);
+  return requireComfort(res.data?.comfort);
 }
 
 export async function appreciateComfortApi(id: string, appreciation: Appreciation): Promise<Comfort> {
@@ -124,6 +131,8 @@ export async function appreciateComfortApi(id: string, appreciation: Appreciatio
     method: "POST",
     body: JSON.stringify({ type: backendType }),
   });
-  return formatApiComfort(res.data?.comfort);
+  return requireComfort(res.data?.comfort);
 }
-
+export async function deleteComfortApi(id: string): Promise<void> {
+  await apiRequest(`/api/v1/comforts/${id}`, { method: "DELETE" });
+}

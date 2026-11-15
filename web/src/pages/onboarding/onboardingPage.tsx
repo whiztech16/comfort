@@ -1,20 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import WelcomeScreen from "../../components/onboarding/WelcomeScreen";
 import ProfileStep from "../../components/onboarding/ProfileStep";
 import PrivacyStep from "../../components/onboarding/PrivacyStep";
-import ProtectChatsStep from "../../components/onboarding/ProtectChatsStep";
 import type { OnboardingData } from "../../types/onboarding";
-import { apiRequest, getUser, setUser } from "../../lib/api";
+import { apiRequest, logoutApi, setUser } from "../../lib/api";
 import { useToast } from "../../hooks/useToast";
-import {
-  createBackup,
-  generateAccountKeys,
-  getLocalKey,
-  storeLocalKey,
-} from "../../lib/chatKeys";
 
-type Step = "welcome" | "profile" | "privacy" | "protect-chats";
+type Step = "welcome" | "profile" | "privacy";
 
 const initialData: OnboardingData = {
   displayName: "",
@@ -34,73 +27,49 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [step]);
-
   function update(patch: Partial<OnboardingData>) {
     setData((previous) => ({ ...previous, ...patch }));
   }
 
-  async function handleProtectChats(passphrase: string) {
+  async function handleFinish() {
     setFinishing(true);
     setFinishError(null);
     try {
-      const user = getUser();
-      const userId = user?.id || "current_user";
+      const displayName = data.displayName.trim() || "Friend";
+      const rawUsername = data.username.trim();
+      const username =
+        rawUsername.length >= 3
+          ? rawUsername
+          : displayName
+              .toLowerCase()
+              .replace(/[^a-z0-9_]/g, "_")
+              .replace(/^[^a-z]+/, "u")
+              .slice(0, 20)
+              .padEnd(3, "0");
 
-      // 1. Generate the keypair, or reuse the previously generated keypair from IndexedDB
-      let keypair = await getLocalKey(userId);
-      if (!keypair) {
-        const generated = await generateAccountKeys();
-        keypair = {
-          publicKeyB64: generated.publicKeyB64,
-          privateKey: generated.privateKey,
-        };
-        // 2. Save keypair to IndexedDB immediately
-        await storeLocalKey(userId, keypair);
-      }
-
-      // 3. PUT /api/v1/keys/account with public key
-      try {
-        await apiRequest("/api/v1/keys/account", {
-          method: "PUT",
-          body: JSON.stringify({ publicKey: keypair.publicKeyB64 }),
-        });
-      } catch (keyErr: unknown) {
-        const errObj = keyErr as { code?: string; message?: string };
-        // If already registered with same key, proceed; otherwise throw
-        if (errObj.code !== "KEY_ALREADY_REGISTERED") {
-          throw keyErr;
-        }
-      }
-
-      // 4. PUT /api/v1/keys/backup with passphrase-encrypted private key & salt
-      const backup = await createBackup(keypair.privateKey, passphrase);
-      await apiRequest("/api/v1/keys/backup", {
-        method: "PUT",
-        body: JSON.stringify(backup),
-      });
-
-      // 5. POST /api/v1/users/onboarding
       const res = await apiRequest<{ user: any }>("/api/v1/users/onboarding", {
         method: "POST",
         body: JSON.stringify({
-          displayName: data.displayName.trim() || "Friend",
-          username: data.username.trim(),
+          displayName,
+          username,
           bio: data.bio?.trim() || undefined,
-          discoverable: data.discoverable,
-          allowMessageRequests: data.allowMessageRequests,
+          discoverableProfile: data.discoverable,
+          allowPrivateMessages: data.allowMessageRequests ? "allowed" : "requests_only",
         }),
       });
 
       if (res.data?.user) {
         setUser(res.data.user);
       }
-      showToast("Profile set up and chats secured 💙");
+      showToast("Welcome to Comfort 💙");
       navigate("/home");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to complete onboarding.";
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "Failed to complete onboarding.";
       setFinishError(msg);
       showToast(msg);
     } finally {
@@ -126,21 +95,29 @@ export default function OnboardingPage() {
         data={data}
         onChange={update}
         onBack={() => setStep("profile")}
-        onContinue={() => setStep("protect-chats")}
-      />
-    );
-  }
-
-  if (step === "protect-chats") {
-    return (
-      <ProtectChatsStep
-        onBack={() => setStep("privacy")}
-        onSubmit={handleProtectChats}
+        onContinue={handleFinish}
         loading={finishing}
         error={finishError}
       />
     );
   }
 
-  return <WelcomeScreen onStart={() => setStep("profile")} />;
+  return (
+    <div>
+      <WelcomeScreen onStart={() => setStep("profile")} />
+      <p className="mt-4 text-center text-[0.8125rem] text-navy/50">
+        Wrong account?{" "}
+        <button
+          type="button"
+          className="underline underline-offset-2 hover:text-navy transition"
+          onClick={async () => {
+            await logoutApi();
+            navigate("/login");
+          }}
+        >
+          Sign out and use a different account
+        </button>
+      </p>
+    </div>
+  );
 }

@@ -7,6 +7,7 @@ const columns = (viewerId: string) => ({
   id: posts.id,
   content: posts.content,
   isAnonymous: posts.isAnonymous,
+  visibility: posts.visibility,
   createdAt: posts.createdAt,
   cursorTs: sql<string>`${posts.createdAt}::text`,
   isMine: sql<boolean>`${posts.authorId} = ${viewerId}`,
@@ -23,6 +24,7 @@ const visibleTo = (viewerId: string): SQL =>
     eq(posts.status, "active"),
     isNull(posts.deletedAt),
     eq(users.status, "active"),
+    or(eq(posts.visibility, "public"), eq(posts.authorId, viewerId)),
     notExists(
       db
         .select({ one: blocks.id })
@@ -51,7 +53,7 @@ export async function findCategoryById(id: string) {
 
 export async function insertPost(
   authorId: string,
-  data: { content: string; categoryId: string; isAnonymous: boolean },
+  data: { content: string; categoryId: string; isAnonymous: boolean; visibility: "public" | "private" },
 ) {
   const [row] = await db.insert(posts).values({ authorId, ...data }).returning({ id: posts.id });
   return row!.id;
@@ -93,6 +95,7 @@ export async function softDeleteOwnPost(id: string, authorId: string) {
 }
 
 export type PostRow = NonNullable<Awaited<ReturnType<typeof findVisiblePost>>>;
+
 export function listByAuthor(opts: {
   viewerId: string;
   authorId: string;
@@ -112,6 +115,7 @@ export function listByAuthor(opts: {
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(opts.limit + 1);
 }
+
 export async function findVisiblePostAuthor(id: string, viewerId: string) {
   const [row] = await db
     .select({ authorId: posts.authorId })
@@ -120,4 +124,13 @@ export async function findVisiblePostAuthor(id: string, viewerId: string) {
     .where(and(eq(posts.id, id), visibleTo(viewerId)))
     .limit(1);
   return row?.authorId ?? null;
+}
+
+export async function updateOwnPostContent(id: string, authorId: string, content: string) {
+  const rows = await db
+    .update(posts)
+    .set({ content })
+    .where(and(eq(posts.id, id), eq(posts.authorId, authorId), isNull(posts.deletedAt), eq(posts.status, "active")))
+    .returning({ id: posts.id });
+  return rows.length > 0;
 }

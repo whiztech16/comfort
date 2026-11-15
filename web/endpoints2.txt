@@ -1,0 +1,388 @@
+﻿---- src\components\messaging\UnlockChatsModal.tsx:70
+const accountKeyRes = await apiRequest<{ publicKey: string }>("/api/v1/keys/account");
+    if (!active) return;
+    const pubKey = accountKeyRes.data?.publicKey;
+    
+    if (pubKey) {
+    setServerPublicKey(pubKey);
+    setMode("unlock");
+    setIsOpen(true);
+    }
+---- src\components\messaging\UnlockChatsModal.tsx:121
+}>("/api/v1/keys/backup");
+    
+    const backup = backupRes.data;
+    if (!backup) {
+    throw new Error("Unable to retrieve chat backup.");
+    }
+    
+    // 2. Decrypt locally and verify derived public key against server public key
+    const privateKey = await restoreFromBackup(backup, passphrase, serverPublicKey);
+---- src\components\messaging\UnlockChatsModal.tsx:187
+// 3. PUT /api/v1/keys/account
+    await apiRequest("/api/v1/keys/account", {
+    method: "PUT",
+    body: JSON.stringify({ publicKey: keypair.publicKeyB64 }),
+    });
+    
+    // 4. PUT /api/v1/keys/backup
+    await apiRequest("/api/v1/keys/backup", {
+    method: "PUT",
+---- src\components\messaging\UnlockChatsModal.tsx:188
+await apiRequest("/api/v1/keys/account", {
+    method: "PUT",
+    body: JSON.stringify({ publicKey: keypair.publicKeyB64 }),
+    });
+    
+    // 4. PUT /api/v1/keys/backup
+    await apiRequest("/api/v1/keys/backup", {
+    method: "PUT",
+    body: JSON.stringify(backup),
+---- src\components\messaging\UnlockChatsModal.tsx:193
+// 4. PUT /api/v1/keys/backup
+    await apiRequest("/api/v1/keys/backup", {
+    method: "PUT",
+    body: JSON.stringify(backup),
+    });
+    
+    setIsOpen(false);
+    window.dispatchEvent(new CustomEvent("comfort:chats_unlocked"));
+    } catch (err: unknown) {
+---- src\components\messaging\UnlockChatsModal.tsx:194
+await apiRequest("/api/v1/keys/backup", {
+    method: "PUT",
+    body: JSON.stringify(backup),
+    });
+    
+    setIsOpen(false);
+    window.dispatchEvent(new CustomEvent("comfort:chats_unlocked"));
+    } catch (err: unknown) {
+    const msg =
+---- src\components\posts\EditPostModal.tsx:28
+await apiRequest(`/api/v1/posts/${postId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ content: body.trim() }),
+    });
+    showToast("Post updated.");
+    onSaved(body.trim());
+    onClose();
+    } catch (err: any) {
+    showToast(err.message || "Failed to update post.");
+---- src\components\posts\PostCard.tsx:116
+await apiRequest(`/api/v1/posts/${post.id}`, { method: "DELETE" });
+    } finally {
+    setDeleted(true);
+    }
+    }}
+    />
+    )}
+    
+    {editing && (
+---- src\lib\api.ts:61
+const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) return false;
+    const json = await res.json().catch(() => ({}));
+    if (json.data?.accessToken) {
+    setAccessToken(json.data.accessToken);
+---- src\lib\api.ts:145
+const res = await apiRequest<{ user: UserState }>("/api/v1/auth/me");
+    if (res.data?.user) {
+    setUser(res.data.user);
+    return res.data.user;
+    }
+    } catch {
+    setAccessToken(null);
+    setUser(null);
+    }
+---- src\lib\api.ts:158
+const res = await apiRequest<{ accessToken: string; user: UserState }>("/api/v1/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken }),
+    });
+    
+    if (res.data?.accessToken) {
+    setAccessToken(res.data.accessToken);
+    }
+    if (res.data?.user) {
+---- src\lib\api.ts:174
+const res = await apiRequest<{ accessToken: string; user: UserState }>("/api/v1/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+    });
+    
+    if (res.data?.accessToken) {
+    setAccessToken(res.data.accessToken);
+    }
+    if (res.data?.user) {
+---- src\lib\api.ts:190
+const res = await apiRequest<{ accessToken: string; user: UserState }>("/api/v1/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+    });
+    
+    if (res.data?.accessToken) {
+    setAccessToken(res.data.accessToken);
+    }
+    if (res.data?.user) {
+---- src\lib\api.ts:208
+await apiRequest("/api/v1/auth/logout", { method: "POST" });
+    } finally {
+    setAccessToken(null);
+    setUser(null);
+    
+    // If not a private device, clear local private chat key
+    if (!isPrivateDevice() && currentUser?.id) {
+    try {
+    await removeLocalKey(currentUser.id);
+---- src\lib\comfortsApi.ts:70
+const res = await apiRequest<{ comfort: any }>("/api/v1/comforts", {
+    method: "POST",
+    body: JSON.stringify({ postId, content, isAnonymous }),
+    });
+    return res.data?.comfort;
+    }
+    
+    export async function listReceivedComfortsApi(limit = 20, cursor?: string) {
+    const params = new URLSearchParams();
+---- src\lib\comfortsApi.ts:84
+`/api/v1/comforts/received${query}`
+    );
+    return {
+    items: (res.data?.items || []).map(formatApiComfort) as ReceivedComfort[],
+    nextCursor: res.data?.nextCursor || null,
+    hasMore: Boolean(res.data?.hasMore),
+    };
+    }
+    
+---- src\lib\comfortsApi.ts:100
+`/api/v1/comforts/sent${query}`
+    );
+    return {
+    items: (res.data?.items || []).map(formatApiComfort) as SentComfort[],
+    nextCursor: res.data?.nextCursor || null,
+    hasMore: Boolean(res.data?.hasMore),
+    };
+    }
+    
+---- src\lib\comfortsApi.ts:110
+const res = await apiRequest<{ comfort: any }>(`/api/v1/comforts/${id}`);
+    return formatApiComfort(res.data?.comfort);
+    }
+    
+    export async function openComfortApi(id: string): Promise<Comfort> {
+    const res = await apiRequest<{ comfort: any }>(`/api/v1/comforts/${id}/open`, {
+    method: "POST",
+    });
+    return formatApiComfort(res.data?.comfort);
+---- src\lib\comfortsApi.ts:115
+const res = await apiRequest<{ comfort: any }>(`/api/v1/comforts/${id}/open`, {
+    method: "POST",
+    });
+    return formatApiComfort(res.data?.comfort);
+    }
+    
+    export async function appreciateComfortApi(id: string, appreciation: Appreciation): Promise<Comfort> {
+    const backendType = toBackendAppreciation(appreciation);
+    const res = await apiRequest<{ comfort: any }>(`/api/v1/comforts/${id}/appreciation`, {
+---- src\lib\comfortsApi.ts:123
+const res = await apiRequest<{ comfort: any }>(`/api/v1/comforts/${id}/appreciation`, {
+    method: "POST",
+    body: JSON.stringify({ type: backendType }),
+    });
+    return formatApiComfort(res.data?.comfort);
+    }
+    
+---- src\pages\app\BlockedUsersPage.tsx:25
+apiRequest<{ items: BlockedUser[] }>("/api/v1/blocks")
+    .then((res) => setBlocks(res.data?.items ?? []))
+    .catch(() => setBlocks([]))
+    .finally(() => setLoading(false));
+    }, []);
+    
+    async function handleUnblock(blockId: string, displayName: string) {
+    setUnblocking(blockId);
+    try {
+---- src\pages\app\BlockedUsersPage.tsx:34
+await apiRequest(`/api/v1/blocks/${blockId}`, { method: "DELETE" });
+    setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+    showToast(`Unblocked ${displayName}.`);
+    } catch (err: any) {
+    showToast(err.message || "Failed to unblock.");
+    } finally {
+    setUnblocking(null);
+    }
+    }
+---- src\pages\app\ChangePassphrasePage.tsx:106
+}>("/api/v1/keys/backup");
+    
+    const backup = backupRes.data?.backup;
+    if (!backup) {
+    throw new Error("No existing backup found.");
+    }
+    
+    const verifiedKey = await restoreFromBackup(backup, currentPassphrase, localKey.publicKeyB64);
+    if (!verifiedKey) {
+---- src\pages\app\ChangePassphrasePage.tsx:124
+await apiRequest("/api/v1/keys/backup", {
+    method: "PUT",
+    body: JSON.stringify(newBackup),
+    });
+    
+    showToast("Chat passphrase updated successfully 💙");
+    navigate("/settings");
+    } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to update chat passphrase.";
+---- src\pages\app\ChangePasswordPage.tsx:58
+const res = await apiRequest<{ accessToken: string }>("/api/v1/auth/change-password", {
+    method: "PATCH",
+    body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    
+    if (res.data?.accessToken) {
+    setAccessToken(res.data.accessToken);
+    }
+    
+---- src\pages\app\CreatePostPage.tsx:55
+apiRequest<{ categories: { id: string; name: string }[] }>("/api/v1/categories")
+    .then((res) => {
+    const cats = res.data?.categories ?? [];
+    setCategories(cats);
+    if (cats.length > 0) setCategoryId(cats[0].id);
+    })
+    .catch(() => {});
+    }, []);
+    
+---- src\pages\app\CreatePostPage.tsx:77
+await apiRequest("/api/v1/posts", {
+    method: "POST",
+    body: JSON.stringify({
+    content: body.trim(),
+    categoryId: categoryId || undefined,
+    isAnonymous: anonymous,
+    visibility,
+    }),
+    });
+---- src\pages\app\EditProfilePage.tsx:50
+const res = await apiRequest<{ user: any }>("/api/v1/users/profile", {
+    method: "PUT",
+    body: JSON.stringify({
+    displayName: displayName.trim(),
+    username,
+    bio: bio.trim() || undefined,
+    }),
+    });
+    if (res.data?.user) {
+---- src\pages\app\Homepage.tsx:26
+apiRequest(`/api/v1/posts${params}`)
+    .then((res) => setPosts(res.data?.items ?? []))
+    .catch(() => setPosts([]))
+    .finally(() => setLoading(false));
+    }, [filter]);
+    
+    return (
+    <div className="space-y-5">
+    <div className="relative isolate space-y-5">
+---- src\pages\app\MessagingPreferencesPage.tsx:45
+apiRequest<{ user: any }>("/api/v1/auth/me")
+    .then((res) => {
+    const val = res.data?.user?.settings?.allowPrivateMessages;
+    if (val === "requests_only" || val === "off" || val === "allowed") {
+    setSelected(val);
+    }
+    })
+    .catch(() => {})
+    .finally(() => setLoading(false));
+---- src\pages\app\MessagingPreferencesPage.tsx:59
+await apiRequest("/api/v1/users/settings", {
+    method: "PATCH",
+    body: JSON.stringify({ allowPrivateMessages: selected }),
+    });
+    showToast("Messaging preferences saved.");
+    navigate("/settings");
+    } catch (err: any) {
+    showToast(err.message || "Failed to save preferences.");
+    } finally {
+---- src\pages\app\ProfilePage.tsx:17
+apiRequest("/api/v1/users/me/posts")
+    .then((res) => setPosts(res.data?.items ?? []))
+    .catch(() => setPosts([]))
+    .finally(() => setLoading(false));
+    }, []);
+    
+    return (
+    <div className="space-y-6">
+    <section className="rounded-3xl border border-black/[0.06] bg-gradient-to-b from-[#eef2fb] to-white p-5 sm:p-6">
+---- src\pages\app\SendComfortPage.tsx:54
+}>(`/api/v1/posts/${postId}`)
+    .then((res) => {
+    if (!active) return;
+    const p = res.data?.post;
+    if (p) {
+    const isAnon = p.author?.isAnonymous ?? false;
+    setPost({
+    authorName: isAnon ? null : (p.author?.displayName ?? null),
+    body: p.content,
+---- src\pages\app\SendComfortPage.tsx:77
+apiRequest<{ user: any }>(`/api/v1/users/${username}`)
+    .then((res) => {
+    if (!active) return;
+    const u = res.data?.user;
+    if (u) {
+    const me = getUser();
+    setProfile({
+    displayName: u.profile?.displayName ?? username,
+    username: u.profile?.username ?? username,
+---- src\pages\app\SendComfortPage.tsx:182
+await apiRequest("/api/v1/comforts", {
+    method: "POST",
+    body: JSON.stringify({
+    recipientUsername: profile.username,
+    content: message,
+    isAnonymous: identity === "anonymous",
+    }),
+    });
+    }
+---- src\pages\app\SettingsPage.tsx:381
+await apiRequest("/api/v1/users/me", { method: "DELETE" });
+    } finally {
+    await logoutApi();
+    navigate("/login");
+    }
+    }}
+    />
+    )}
+    </div>
+---- src\pages\app\UserProfilePage.tsx:35
+apiRequest<{ user: any }>(`/api/v1/users/${username}`)
+    .then((res) => {
+    const u = res.data?.user;
+    if (!u) { setNotFound(true); return; }
+    setProfile({
+    displayName: u.profile?.displayName ?? username,
+    username: u.profile?.username ?? username,
+    bio: u.profile?.bio ?? null,
+    avatarUrl: u.profile?.avatarUrl ?? null,
+---- src\pages\app\UserProfilePage.tsx:46
+return apiRequest<{ items: any[] }>(`/api/v1/users/${username}/posts`);
+    })
+    .then((res) => {
+    if (res) setPosts(res.data?.items ?? []);
+    })
+    .catch(() => setNotFound(true))
+    .finally(() => setLoading(false));
+    }, [username]);
+    
+---- src\pages\onboarding\onboardingPage.tsx:50
+const res = await apiRequest<{ user: any }>("/api/v1/users/onboarding", {
+    method: "POST",
+    body: JSON.stringify({
+    displayName,
+    username,
+    bio: data.bio?.trim() || undefined,
+    discoverableProfile: data.discoverable,
+    allowPrivateMessages: data.allowMessageRequests ? "allowed" : "requests_only",
+    }),

@@ -1,6 +1,6 @@
-// Nothing here ever includes a person's account ID
+
 export interface Person {
-  displayName: string | null; // null when anonymous
+  displayName: string | null
   isAnonymous: boolean;
 }
 
@@ -16,9 +16,9 @@ interface ComfortBase {
 export interface ReceivedComfort extends ComfortBase {
   direction: "received";
   from: Person;
-  firstOpenedAt: string | null; // set by the backend; null means show the envelope
-  appreciation: Appreciation | null; // the private response the recipient chose
-  conversationId: string | null; // set once the recipient replies
+  firstOpenedAt: string | null; 
+  appreciation: Appreciation | null; 
+  conversationId: string | null; 
 }
 
 export interface SentComfort extends ComfortBase {
@@ -43,4 +43,14 @@ export interface Conversation {
   unread: boolean;
   lastActivity: string;
   messages: ChatMessage[];
+}
+
+// What the Conversations list shows: messages are encrypted, so no previews
+export interface ConversationSummary {
+  id: string;
+  participant: Person;
+  unread: boolean;
+  lastActivity: string;
+  hasMessages: boolean;
+  locked: boolean;
 }

@@ -2,11 +2,6 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { getAccessToken, getUser, fetchMe } from "../lib/api";
 
-/**
- * Protects application routes (/home, /posts, /comforts, /profile, /settings).
- * - Unauthenticated users -> redirected to /login.
- * - Authenticated users who haven't completed onboarding -> locked to /onboarding.
- */
 export default function AuthGuard() {
   const token = getAccessToken();
   const [user, setUserState] = useState(getUser());
@@ -32,7 +27,6 @@ export default function AuthGuard() {
     );
   }
 
-  // Not completed onboarding -> cannot access home/posts/etc.
   if (!user?.onboardingCompleted) {
     return <Navigate to="/onboarding" replace />;
   }

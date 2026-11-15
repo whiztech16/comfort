@@ -1,0 +1,32 @@
+﻿src\components\messaging\UnlockChatsModal.tsx:188: await apiRequest("/api/v1/keys/account", {
+src\components\messaging\UnlockChatsModal.tsx:194: await apiRequest("/api/v1/keys/backup", {
+src\components\posts\EditPostModal.tsx:28: await apiRequest(`/api/v1/posts/${postId}`, {
+src\components\posts\PostCard.tsx:74: onClick={() => setConfirmingDelete(true)}
+src\components\posts\PostCard.tsx:113: onClose={() => setConfirmingDelete(false)}
+src\components\posts\PostCard.tsx:116: await apiRequest(`/api/v1/posts/${post.id}`, { method: "DELETE" });
+src\layouts\BottomNav.tsx:7: // Order in navItems: Home, Comforts, New post (+ button), Profile
+src\lib\api.ts:61: const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+src\lib\api.ts:96: const res = await fetch(`${API_URL}${path}`, {
+src\lib\api.ts:208: await apiRequest("/api/v1/auth/logout", { method: "POST" });
+src\lib\chatKeys.ts:113: const req = store.put(keypair, userId);
+src\lib\chatKeys.ts:124: const req = store.get(userId);
+src\lib\chatKeys.ts:135: const req = store.delete(userId);
+src\lib\samplePosts.ts:57: export function getPost(id: string) {
+src\lib\samplePosts.ts:72: export function addSamplePost(post: Post) {
+src\lib\samplePosts.ts:80: export function deletePost(id: string) {
+src\lib\samplePosts.ts:87: export function editPost(id: string, body: string) {
+src\pages\app\BlockedUsersPage.tsx:34: await apiRequest(`/api/v1/blocks/${blockId}`, { method: "DELETE" });
+src\pages\app\ChangePassphrasePage.tsx:124: await apiRequest("/api/v1/keys/backup", {
+src\pages\app\CreatePostPage.tsx:77: await apiRequest("/api/v1/posts", {
+src\pages\app\Homepage.tsx:26: apiRequest(`/api/v1/posts${params}`)
+src\pages\app\MessagingPreferencesPage.tsx:59: await apiRequest("/api/v1/users/settings", {
+src\pages\app\ProfilePage.tsx:17: apiRequest("/api/v1/users/me/posts")
+src\pages\app\ProfilePage.tsx:79: action={<PrimaryLink to="/posts/new">Create a post</PrimaryLink>}
+src\pages\app\SendComfortPage.tsx:60: setPost({
+src\pages\app\SendComfortPage.tsx:66: setPost(null);
+src\pages\app\SendComfortPage.tsx:69: .catch(() => { if (active) setPost(null); })
+src\pages\app\SendComfortPage.tsx:70: .finally(() => { if (active) setLoadingPost(false); });
+src\pages\app\SendComfortPage.tsx:182: await apiRequest("/api/v1/comforts", {
+src\pages\app\SettingsPage.tsx:308: onClick={() => setShowDelete(true)}
+src\pages\app\SettingsPage.tsx:378: onClose={() => setShowDelete(false)}
+src\pages\app\SettingsPage.tsx:381: await apiRequest("/api/v1/users/me", { method: "DELETE" });

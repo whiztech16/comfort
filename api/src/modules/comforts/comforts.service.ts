@@ -25,6 +25,7 @@ function toComfortDto(row: repo.ComfortRow, viewerId: string) {
     id: row.id,
     direction: received ? ("received" as const) : ("sent" as const),
     postId: row.postId,
+    conversationId: received ? row.conversationId : null,
     content: canRead
       ? decryptAtRest(aad(row.id), {
           ciphertext: row.contentCiphertext,
@@ -36,7 +37,8 @@ function toComfortDto(row: repo.ComfortRow, viewerId: string) {
     isOpened: row.openedAt !== null,
     appreciation: row.appreciationType ? { type: row.appreciationType, at: row.appreciatedAt } : null,
     createdAt: row.createdAt,
-    ...(received ? {} : { isAnonymous: row.isAnonymous }),
+    // The open time is the recipient's own; senders only see opened or not
+    ...(received ? { openedAt: row.openedAt } : { isAnonymous: row.isAnonymous }),
   };
 }
 
@@ -67,12 +69,14 @@ export async function sendComfort(senderId: string, input: CreateComfortInput) {
     isAnonymous: input.isAnonymous,
   });
 
+  // Read back before notifying, so a failure here never alerts the recipient
+  const row = await repo.findComfortFor(id, senderId);
+  if (!row) throw new ApiError(500, "INTERNAL_ERROR", "Something went wrong");
+
   // Notification and live event carry the Comfort ID only, never the sender
   await notify(recipientId, "new_comfort", "comfort", id);
   emitToUser(recipientId, "comfort:new", { comfortId: id });
 
-  const row = await repo.findComfortFor(id, senderId);
-  if (!row) throw new ApiError(500, "INTERNAL_ERROR", "Something went wrong");
   return toComfortDto(row, senderId);
 }
 
@@ -127,4 +131,7 @@ export async function appreciateComfort(userId: string, id: string, input: Appre
   // The sender is told by Comfort ID only, never who appreciated it
   await notify(row.senderId, "new_appreciation", "comfort", id);
   return toComfortDto(row, userId);
+}
+export async function deleteComfort(userId: string, id: string) {
+  if (!(await repo.softDeleteComfort(id, userId))) throw notFound();
 }

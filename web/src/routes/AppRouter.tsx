@@ -3,6 +3,8 @@ import AppLayout from "../layouts/AppLayout";
 import LandingPage from "../pages/landing/landingpage";
 import LoginPage from "../pages/auth/LoginPage";
 import SignupPage from "../pages/auth/SignupPage";
+import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "../pages/auth/ResetPasswordPage";
 import OnboardingPage from "../pages/onboarding/onboardingPage";
 import HomePage from "../pages/app/Homepage";
 import ComfortsPage from "../pages/app/ComfortsPage";
@@ -26,21 +28,19 @@ import PublicAuthGuard from "./PublicAuthGuard";
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Public Landing */}
       <Route path="/" element={<LandingPage />} />
 
-      {/* Guest only: redirects to /home or /onboarding if already signed in */}
       <Route element={<PublicAuthGuard />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
-      {/* Onboarding only: requires signed-in user who hasn't finished onboarding */}
       <Route element={<OnboardingGuard />}>
         <Route path="/onboarding" element={<OnboardingPage />} />
       </Route>
 
-      {/* Logged-in application: requires signed-in user with onboardingCompleted=true */}
       <Route element={<AuthGuard />}>
         <Route element={<AppLayout />}>
           <Route path="/home" element={<HomePage />} />

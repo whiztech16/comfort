@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { SyntheticEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import GoogleAuthButton from "./GoogleAuthButton";
@@ -21,7 +22,7 @@ export default function LoginCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     if (!email.trim() || !password) {
@@ -39,8 +40,9 @@ export default function LoginCard() {
       } else {
         navigate("/onboarding");
       }
-    } catch (err: any) {
-      setError(err.message || "Invalid credentials.");
+    } catch (err: unknown) {
+      const message = (err as { message?: string } | null)?.message;
+      setError(message || "Invalid credentials.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +87,7 @@ export default function LoginCard() {
               Password
             </label>
             <Link
-              to="/reset-password"
+              to="/forgot-password"
               className="text-[0.75rem] font-semibold text-charcoal underline underline-offset-2"
             >
               Forgot password?

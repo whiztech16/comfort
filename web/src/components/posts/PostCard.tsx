@@ -6,25 +6,42 @@ import ShareMenu from "./ShareMenu";
 import DeletePostModal from "./DeletePostModal";
 import EditPostModal from "./EditPostModal";
 import SafetyMenu from "../safety/SafetyMenu";
-import { deletePost } from "../../lib/samplePosts";
+import { useToast } from "../../hooks/useToast";
+import { apiRequest } from "../../lib/api";
+import { blockByUsernameApi } from "../../lib/blocksApi";
 import type { Post } from "../../types/posts";
 
 export default function PostCard({ post }: Readonly<{ post: Post }>) {
+  const { showToast } = useToast();
   const [deleted, setDeleted] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
-  // Local copy of body so edits show without a full re-render of the parent
   const [body, setBody] = useState(post.body);
 
   if (deleted) return null;
 
   const canShare = post.visibility === "public";
   const anonymousAndMine = post.mine === true && post.authorName === null;
+  const authorUsername = post.authorUsername;
 
-  // Named authors link to their public profile. Anonymous authors never do.
   let profilePath: string | null = null;
-  if (post.authorUsername) {
-    profilePath = post.mine ? "/profile" : `/u/${post.authorUsername}`;
+  if (authorUsername) {
+    profilePath = post.mine ? "/profile" : `/u/${authorUsername}`;
+  }
+
+  async function handleDelete() {
+    try {
+      await apiRequest(`/api/v1/posts/${post.id}`, { method: "DELETE" });
+      setDeleted(true);
+    } catch (err: any) {
+      if (err?.status === 404) {
+        setDeleted(true);
+      } else {
+        showToast(err?.message || "Couldn't delete this post. Please try again.");
+      }
+    } finally {
+      setConfirmingDelete(false);
+    }
   }
 
   const identity = (
@@ -58,7 +75,6 @@ export default function PostCard({ post }: Readonly<{ post: Post }>) {
         </span>
 
         {post.mine ? (
-          /* Edit + Delete for own posts */
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -78,7 +94,12 @@ export default function PostCard({ post }: Readonly<{ post: Post }>) {
             </button>
           </div>
         ) : (
-          <SafetyMenu name={post.authorName} reportKind="post" />
+          <SafetyMenu
+            name={post.authorName}
+            reportKind="post"
+            onBlock={authorUsername ? () => blockByUsernameApi(authorUsername) : undefined}
+            onBlockChange={() => setDeleted(true)}
+          />
         )}
       </header>
 
@@ -109,13 +130,7 @@ export default function PostCard({ post }: Readonly<{ post: Post }>) {
       </footer>
 
       {confirmingDelete && (
-        <DeletePostModal
-          onClose={() => setConfirmingDelete(false)}
-          onConfirm={() => {
-            deletePost(post.id);
-            setDeleted(true);
-          }}
-        />
+        <DeletePostModal onClose={() => setConfirmingDelete(false)} onConfirm={handleDelete} />
       )}
 
       {editing && (

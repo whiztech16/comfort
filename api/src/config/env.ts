@@ -11,15 +11,17 @@ const schema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 
   // Neon: pooled connection string for the running API
-   DATABASE_URL: z
+  DATABASE_URL: z
     .string()
     .url()
     .refine((u) => {
       const { hostname, searchParams } = new URL(u);
-      return (
-        ["localhost", "127.0.0.1"].includes(hostname) ||
-        searchParams.get("sslmode") === "verify-full"
-      );
+      // "db" is the docker-compose Postgres container, never exempt in production
+      const localHosts =
+        process.env.NODE_ENV === "production"
+          ? ["localhost", "127.0.0.1"]
+          : ["localhost", "127.0.0.1", "db"];
+      return localHosts.includes(hostname) || searchParams.get("sslmode") === "verify-full";
     }, "DATABASE_URL must include ?sslmode=verify-full for any non-local database"),
   REDIS_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
 
@@ -45,11 +47,8 @@ const schema = z.object({
   CLOUDINARY_API_KEY: optionalString,
   CLOUDINARY_API_SECRET: optionalString,
 
-  EMAIL_HOST: optionalString,
-  EMAIL_PORT: z.coerce.number().int().default(587),
-  EMAIL_USER: optionalString,
-  EMAIL_PASSWORD: optionalString,
-  EMAIL_FROM: optionalString,
+  BREVO_API_KEY: optionalString,
+  EMAIL_FROM: z.preprocess(emptyToUndefined, z.string().email().optional()),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -66,17 +65,15 @@ export const env = parsed.data;
 export const isProd = env.NODE_ENV === "production";
 
 if (isProd) {
+  // REDIS_URL is optional: a single instance works without it
   const missing = (
     [
       "GOOGLE_CLIENT_ID",
       "CLOUDINARY_CLOUD_NAME",
       "CLOUDINARY_API_KEY",
       "CLOUDINARY_API_SECRET",
-      "EMAIL_HOST",
-      "EMAIL_USER",
-      "EMAIL_PASSWORD",
+      "BREVO_API_KEY",
       "EMAIL_FROM",
-      "REDIS_URL",
     ] as const
   ).filter((k) => !env[k]);
 

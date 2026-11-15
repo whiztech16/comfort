@@ -19,6 +19,18 @@ export const blockComfortSender: RequestHandler = asyncHandler(async (req, res) 
   send(res, 201, { blocked: true }, "Sender blocked");
 });
 
+export const blockConversation: RequestHandler = asyncHandler(async (req, res) => {
+  const { id } = blockParamsSchema.parse(req.params);
+  await service.blockConversationCounterpart(req.auth!.userId, id);
+  send(res, 201, { blocked: true }, "User blocked");
+});
+
+export const unblockConversation: RequestHandler = asyncHandler(async (req, res) => {
+  const { id } = blockParamsSchema.parse(req.params);
+  await service.unblockConversationCounterpart(req.auth!.userId, id);
+  send(res, 200, {}, "User unblocked");
+});
+
 export const listBlocks: RequestHandler = asyncHandler(async (req, res) => {
   send(res, 200, { items: await service.listBlocks(req.auth!.userId) });
 });

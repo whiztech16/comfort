@@ -12,8 +12,11 @@ export const createPostSchema = z
       .refine(hasNoUnsafeChars, "Content contains invalid characters"),
     categoryId: z.string().uuid(),
     isAnonymous: z.boolean(),
+    visibility: z.enum(["public", "private"]).default("public"),
   })
   .strict();
+
+export const updatePostSchema = z.object({ content: createPostSchema.shape.content }).strict();
 
 export const postParamsSchema = z.object({ id: z.string().uuid() }).strict();
 
@@ -26,9 +29,12 @@ export const feedQuerySchema = z.object({
     .optional(),
 });
 
-export type CreatePostInput = z.infer<typeof createPostSchema>;
-export type FeedQuery = z.infer<typeof feedQuerySchema>;
 export const profilePostsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().min(1).max(300).optional(),
 });
+
+export type CreatePostInput = z.infer<typeof createPostSchema>;
+export type UpdatePostInput = z.infer<typeof updatePostSchema>;
+export type FeedQuery = z.infer<typeof feedQuerySchema>;
+export type ProfilePostsQuery = z.infer<typeof profilePostsQuerySchema>;

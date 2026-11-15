@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
 import { Mail, MailOpen, Send } from "lucide-react";
 import Avatar from "../shared/Avatar";
-import { displayName } from "../../lib/sampleComforts";
 import type { Comfort } from "../../types/messaging";
 
 function preview(comfort: Comfort) {
   if (comfort.direction === "sent") return comfort.body;
-  // Unopened Comforts show a neutral preview, never the message itself
   return comfort.firstOpenedAt === null ? "Sent you a Comfort" : comfort.body;
 }
 
@@ -14,7 +12,9 @@ export default function ComfortRow({ comfort }: Readonly<{ comfort: Comfort }>) 
   const sent = comfort.direction === "sent";
   const person = sent ? comfort.to : comfort.from;
   const unread = !sent && comfort.firstOpenedAt === null;
-  const name = sent ? `To ${person.displayName ?? "the author"}` : displayName(person);
+  const name = sent
+    ? `To ${person.displayName ?? "the author"}`
+    : (person.displayName ?? "Anonymous");
 
   let Icon = Mail;
   if (sent) Icon = Send;

@@ -29,6 +29,8 @@ function toConversationDto(row: repo.ConversationRow) {
     counterpart: toPublicIdentity({ isAnonymous, profile: row.counterpartProfile }),
     counterpartPublicKey: row.counterpartPublicKey,
     locked: row.blocked || row.counterpartStatus !== "active",
+    // Only the person who blocked learns this; the blocked person just sees "closed"
+    blockedByMe: row.blockedByMe,
     hasUnread: row.hasUnread,
   };
 }
@@ -156,4 +158,9 @@ export async function markRead(userId: string, id: string) {
   const fresh = await repo.findConversationFor(id, userId);
   if (fresh) emitToUser(userId, "conversation:updated", { conversation: toConversationDto(fresh) });
   return { readAt };
+}
+
+// "Delete for me": clears this person's copy only
+export async function deleteConversation(userId: string, id: string) {
+  if (!(await repo.clearConversation(id, userId))) throw notFound();
 }

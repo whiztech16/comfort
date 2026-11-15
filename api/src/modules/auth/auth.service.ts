@@ -7,7 +7,7 @@ import { env } from "../../config/env";
 import { db } from "../../db";
 import { passwordResetTokens, profiles, refreshTokens, userSettings, users } from "../../db/schema";
 import { sendPasswordResetEmail } from "../../services/email.service";
-import { ApiError } from "../../shared/errors";
+import { ApiError, safeErrorInfo } from "../../shared/errors";
 import { logger } from "../../shared/logger";
 import { signAccessToken } from "../../utils/jwt";
 import type { ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from "./auth.validation";
@@ -23,8 +23,10 @@ const sha = (v: string) => createHash("sha256").update(v).digest("hex");
 const hash = (p: string) => argon2.hash(p.normalize("NFKC"), ARGON);
 const verify = (h: string, p: string) => argon2.verify(h, p.normalize("NFKC")).catch(() => false);
 const dummy = hash("timing-equalizer");
-const burn = async (p: string) => void (await verify(await dummy, p));
-const alert = (event: string, fields: object) => logger.warn({ event, ...fields }, event);
+const burn = async (p: string) => {
+  await verify(await dummy, p);
+};
+const alert = (event: string) => logger.warn({ event }, event);
 
 const invalidLogin = () => new ApiError(401, "UNAUTHENTICATED", "Invalid credentials");
 const locked = () => new ApiError(429, "ACCOUNT_LOCKED", "Account temporarily locked");
@@ -52,7 +54,7 @@ const byEmail = async (email: string, x: Db = db, lock = false) => {
 
 async function activeUser(id: string) {
   const [u] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  if (!u || u.status !== "active") throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+  if (u?.status !== "active") throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
   return u;
 }
 
@@ -106,7 +108,7 @@ export async function getCurrentUser(id: string) {
     .innerJoin(userSettings, eq(userSettings.userId, users.id))
     .where(eq(users.id, id))
     .limit(1);
-  if (!row || row.status !== "active") throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+  if (row?.status !== "active") throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
   const { status, profile, ...user } = row;
   return {
     ...user,
@@ -162,11 +164,11 @@ export async function login({ email, password }: LoginInput, ua?: string) {
   }
   if (!(await reserveAttempt(user.id))) {
     await burn(password);
-    alert("auth.login_locked", { userId: user.id });
+    alert("auth.login_locked");
     throw locked();
   }
   if (!(await verify(user.passwordHash, password))) {
-    alert("auth.login_failed", { userId: user.id });
+    alert("auth.login_failed");
     throw invalidLogin();
   }
   if (user.status !== "active") throw unavailable();
@@ -182,7 +184,7 @@ async function googleIdentity(idToken: string) {
     if (!p?.sub || !p.email || p.email_verified !== true || !p.iat) throw new Error("unusable payload");
     return { sub: p.sub, email: p.email.toLowerCase(), name: p.name, iat: p.iat };
   } catch {
-    alert("auth.google_rejected", {});
+    alert("auth.google_rejected");
     throw new ApiError(401, "UNAUTHENTICATED", "Invalid Google credential");
   }
 }
@@ -212,7 +214,7 @@ export async function googleSignIn(idToken: string, ua?: string) {
             .where(eq(users.id, existing.id));
           if (wipe) {
             await revoke(eq(refreshTokens.userId, existing.id), tx);
-            alert("auth.google_link_wiped_password", { userId: existing.id });
+            alert("auth.google_link_wiped_password");
           }
         }
         return existing.id;
@@ -250,7 +252,7 @@ export async function refresh(raw: string | undefined) {
     const [u] = dead ? [] : await tx.select({ status: users.status }).from(users).where(eq(users.id, t.userId));
     if (dead || u?.status !== "active") {
       await revoke(eq(refreshTokens.familyId, t.familyId), tx);
-      if (t.revokedAt) alert("auth.refresh_reuse_detected", { userId: t.userId });
+      if (t.revokedAt) alert("auth.refresh_reuse_detected");
       return null;
     }
 
@@ -308,7 +310,7 @@ async function verifyCurrentPassword(user: { id: string; passwordHash: string | 
   if (!user.passwordHash) throw new ApiError(400, "PASSWORD_NOT_SET", "No password is set for this account");
   if (!(await reserveAttempt(user.id))) throw locked();
   if (!(await verify(user.passwordHash, password))) {
-    alert("auth.bad_current_password", { userId: user.id });
+    alert("auth.bad_current_password");
     throw new ApiError(400, "INVALID_CURRENT_PASSWORD", "Current password is incorrect");
   }
 }
@@ -361,8 +363,8 @@ export async function requestPasswordReset(email: string) {
 
   const link = new URL("/reset-password", env.FRONTEND_URL);
   link.hash = `token=${token}`;
-  await sendPasswordResetEmail(user.email, link.toString()).catch(() =>
-    logger.error({ event: "auth.reset_email_failed", userId: user.id }),
+  await sendPasswordResetEmail(user.email, link.toString()).catch((err: unknown) =>
+    logger.error({ event: "auth.reset_email_failed", error: safeErrorInfo(err) }),
   );
 }
 

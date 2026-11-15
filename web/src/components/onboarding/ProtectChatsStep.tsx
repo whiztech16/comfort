@@ -47,8 +47,12 @@ export default function ProtectChatsStep({
   const [touched, setTouched] = useState(false);
 
   const strengthResult = useMemo(() => {
-    if (!passphrase) return null;
-    return zxcvbn(passphrase);
+    if (!passphrase || passphrase.length === 0) return null;
+    try {
+      return zxcvbn(passphrase);
+    } catch {
+      return null;
+    }
   }, [passphrase]);
 
   const score = strengthResult ? strengthResult.score : 0;

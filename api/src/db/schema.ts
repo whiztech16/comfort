@@ -23,6 +23,7 @@ export const messagingPreference = pgEnum("messaging_preference", [
   "off",
 ]);
 export const postStatus = pgEnum("post_status", ["active", "removed"]);
+export const postVisibility = pgEnum("post_visibility", ["public", "private"]);
 export const appreciationType = pgEnum("appreciation_type", [
   "this_helped",
   "made_my_day",
@@ -174,7 +175,10 @@ export const posts = pgTable(
       .references(() => categories.id, { onDelete: "restrict" }),
     content: text("content").notNull(),
     isAnonymous: boolean("is_anonymous").notNull(),
+
+    visibility: postVisibility("visibility").notNull().default("public"),
     status: postStatus("status").notNull().default("active"),
+   
     createdAt: timestamptz("created_at").notNull().defaultNow(),
     deletedAt: timestamptz("deleted_at"),
   },
@@ -205,6 +209,9 @@ export const comforts = pgTable(
     appreciationType: appreciationType("appreciation_type"),
     appreciatedAt: timestamptz("appreciated_at"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
+  
+    senderDeletedAt: timestamptz("sender_deleted_at"),
+    recipientDeletedAt: timestamptz("recipient_deleted_at"),
   },
   (t) => [
     index("comforts_recipient_idx").on(t.recipientId, t.createdAt.desc()),
@@ -242,6 +249,7 @@ export const conversationParticipants = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     joinedAt: timestamptz("joined_at").notNull().defaultNow(),
     lastReadAt: timestamptz("last_read_at"),
+    clearedAt: timestamp("cleared_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("conversation_participants_unique_idx").on(t.conversationId, t.userId),

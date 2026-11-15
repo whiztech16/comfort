@@ -1,0 +1,1 @@
+export const HANDWRITING = '"La Belle Aurore", "Segoe Script", "Bradley Hand", cursive';
