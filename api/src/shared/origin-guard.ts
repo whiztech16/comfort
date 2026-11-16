@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { env } from "../../src/config/env";
+import { env } from "../config/env";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 // Compare the origin form only, so a trailing slash in .env is harmless
