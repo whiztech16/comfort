@@ -3,9 +3,11 @@ import { Heart, LogOut } from "lucide-react";
 import logo from "../assets/images/comfort-logo.png";
 import { navItems } from "./navitems";
 import { logoutApi } from "../lib/api";
+import { useUnopenedComfortCount } from "../hooks/useUnopenedComforts";
 
 export default function SideNav() {
   const navigate = useNavigate();
+  const unopened = useUnopenedComfortCount();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-black/[0.06] bg-white px-4 py-6 lg:flex">
@@ -18,8 +20,9 @@ export default function SideNav() {
       </Link>
 
       <nav aria-label="Primary" className="mt-9 flex flex-col gap-1">
-        {navItems.map(({ to, label, icon: Icon, badge }) => {
+        {navItems.map(({ to, label, icon: Icon }) => {
           const isCreate = to === "/posts/new";
+          const count = to === "/comforts" ? unopened : 0;
 
           return (
             <NavLink
@@ -43,9 +46,9 @@ export default function SideNav() {
 
               <span className="flex-1">{label}</span>
 
-              {badge ? (
+              {count > 0 ? (
                 <span className="rounded-lg bg-[#dde7f7] px-2 py-0.5 text-[0.75rem] font-semibold text-navy">
-                  {badge}
+                  {count > 9 ? "9+" : count}
                 </span>
               ) : null}
             </NavLink>

@@ -47,3 +47,6 @@ export const remove: RequestHandler = asyncHandler(async (req, res) => {
   await service.deleteComfort(req.auth!.userId, id);
   send(res, 200, {}, "Comfort deleted");
 });
+export const unopenedCount: RequestHandler = asyncHandler(async (req, res) => {
+  send(res, 200, await service.unopenedCount(req.auth!.userId));
+});

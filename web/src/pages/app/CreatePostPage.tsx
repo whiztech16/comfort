@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, UserCircle2, Ghost } from "lucide-react";
+import type { FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { UserCircle2, Ghost } from "lucide-react";
 import { PrimaryButton } from "../../components/shared/PrimaryButton";
 import { useToast } from "../../hooks/useToast";
 import { apiRequest, getUser } from "../../lib/api";
 
-const MAX = 400;
+const MAX = 2000;
 
 const labelClass = "mb-2 block text-[0.8125rem] font-medium text-navy";
 
@@ -16,7 +16,6 @@ const baseField =
 type Category = { id: string; name: string };
 type CategoryState = "loading" | "ready" | "error";
 
-// Turn an API error into a readable message
 function postErrorMessage(err: unknown): string {
   const e = err as { status?: number; message?: string } | null;
   if (!e?.status) return "Check your connection and try again.";
@@ -25,47 +24,23 @@ function postErrorMessage(err: unknown): string {
   return e.message || "Failed to create post.";
 }
 
-function OptionButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-full border py-2.5 text-[0.875rem] font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep ${
-        active
-          ? "border-brand-deep bg-brand-deep text-white"
-          : "border-black/[0.1] bg-white text-navy/70 hover:bg-[#f1f3fa]"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 export default function CreatePostPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
   const user = getUser();
   const displayName = user?.profile?.displayName ?? "Friend";
+  const draft = (location.state as { draft?: string } | null)?.draft ?? "";
 
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(draft.slice(0, MAX));
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryState, setCategoryState] = useState<CategoryState>("loading");
   const [reloadKey, setReloadKey] = useState(0);
   const [categoryId, setCategoryId] = useState("");
-  const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [anonymous, setAnonymous] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Load categories; reloadKey lets the user retry
   useEffect(() => {
     let active = true;
     setCategoryState("loading");
@@ -105,7 +80,6 @@ export default function CreatePostPage() {
           content: body.trim(),
           categoryId,
           isAnonymous: anonymous,
-          visibility,
         }),
       });
       showToast("Your post is live 💙");
@@ -154,7 +128,7 @@ export default function CreatePostPage() {
             )}
             <span
               className={`text-[0.75rem] tabular-nums ${
-                overLimit ? "text-[#b4443a]" : remaining <= 50 ? "text-amber-600" : "text-navy/40"
+                overLimit ? "text-[#b4443a]" : remaining <= 100 ? "text-amber-600" : "text-navy/40"
               }`}
             >
               {remaining}
@@ -195,28 +169,6 @@ export default function CreatePostPage() {
               ))}
             </select>
           )}
-        </div>
-
-        <div>
-          <p className={labelClass}>Visibility</p>
-          <div className="flex gap-3">
-            <OptionButton active={visibility === "public"} onClick={() => setVisibility("public")}>
-              <Eye aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-              Public
-            </OptionButton>
-            <OptionButton
-              active={visibility === "private"}
-              onClick={() => setVisibility("private")}
-            >
-              <EyeOff aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-              Only me
-            </OptionButton>
-          </div>
-          <p className="mt-2 px-1 text-[0.8125rem] text-navy/50">
-            {visibility === "public"
-              ? "Anyone on Comfort can read and send you a Comfort."
-              : "Only you can see this post. Use it as a private journal."}
-          </p>
         </div>
 
         <div className="rounded-2xl border border-black/[0.06] bg-white p-4">

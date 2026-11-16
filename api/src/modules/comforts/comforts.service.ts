@@ -135,3 +135,6 @@ export async function appreciateComfort(userId: string, id: string, input: Appre
 export async function deleteComfort(userId: string, id: string) {
   if (!(await repo.softDeleteComfort(id, userId))) throw notFound();
 }
+export async function unopenedCount(userId: string) {
+  return { count: await repo.countUnopened(userId) };
+}

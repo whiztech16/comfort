@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import footerImage from "../../assets/images/footerimg2.png";
+import footerImage from "../../assets/images/footerimg2.webp";
 
 export default function FinalCTA() {
     return (

@@ -30,6 +30,7 @@ export default function ComposerPrompt({ name }: Readonly<{ name: string }>) {
         type="text"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
+        maxLength={2000}
         placeholder="Share something…"
         autoComplete="off"
         className="min-w-0 flex-1 bg-transparent text-[0.9375rem] text-navy outline-none placeholder:text-navy/50"

@@ -11,7 +11,7 @@ export type NavItemType = {
 // Order: Home, Comforts, [+ button], Profile
 export const navItems: NavItemType[] = [
   { to: "/home",      label: "Home",     icon: House },
-  { to: "/comforts",  label: "Comforts", icon: Mail, badge: 2 },
+  { to: "/comforts",  label: "Comforts", icon: Mail},
   { to: "/posts/new", label: "New post", icon: Plus },
   { to: "/profile",   label: "Profile",  icon: User },
 ];

@@ -1,16 +1,21 @@
 import { useEffect, useRef } from "react";
-import shareImg from "../../assets/images/card1img.png";
-import receiveImg from "../../assets/images/card2img.png";
-import supportImg from "../../assets/images/card3img.png";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import shareImg from "../../assets/images/card1img.webp";
+import receiveImg from "../../assets/images/card2 img.webp";
+import supportImg from "../../assets/images/card3img.webp";
+
+gsap.registerPlugin(ScrollTrigger);
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 const steps = [
-  {
+  { 
     n: "01",
     label: "Share",
     title: "Share your feelings",
     text: "Express what you're going through in your own words, at your own pace.",
     image: shareImg,
-    alt: "A man resting his chin on his hand, looking thoughtfully out of a window",
+    alt: "A woman resting her chin on her hand, looking thoughtfully out of a window",
   },
   {
     n: "02",
@@ -18,7 +23,7 @@ const steps = [
     title: "Receive kindness",
     text: "Open thoughtful messages whenever you're ready. You never have to reply.",
     image: receiveImg,
-    alt: "A woman smiling softly as she reads a letter",
+    alt: "A man smiling softly as he reads a letter",
   },
   {
     n: "03",
@@ -31,76 +36,74 @@ const steps = [
 ];
 
 export default function HowComfortWorks() {
-  const sectionRef = useRef<HTMLElement>(null);
+  const pinRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const section = sectionRef.current;
+    const pin = pinRef.current;
     const track = trackRef.current;
-    if (!section || !track) return;
+    if (!pin || !track) return;
 
-    const desktop = window.matchMedia("(min-width: 1024px)");
-    let frame = 0;
+    const mm = gsap.matchMedia();
 
-    const update = () => {
-      frame = 0;
-      if (desktop.matches) {
-        track.style.removeProperty("--x");
-        return;
-      }
-      const scrollable = section.offsetHeight - window.innerHeight;
-      if (scrollable <= 0) return;
-      const progress = Math.min(
-        Math.max(-section.getBoundingClientRect().top / scrollable, 0),
-        1
-      );
-      const maxShift = Math.max(
-        track.scrollWidth - (track.parentElement?.clientWidth ?? 0),
-        0
-      );
-      track.style.setProperty("--x", `${-progress * maxShift}px`);
-    };
+    mm.add("(max-width: 1023px)", () => {
+      const getShift = () =>
+        Math.max(track.scrollWidth - window.innerWidth, 0);
 
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
+      if (getShift() <= 0) return;
 
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    desktop.addEventListener("change", onScroll);
+      gsap.to(track, {
+        x: () => -getShift(),
+        y: () => {
+          const topPad = parseFloat(getComputedStyle(pin).paddingTop) || 0;
+          const centered = (window.innerHeight - track.offsetHeight) / 2;
+          return Math.max(centered - topPad, 0);
+        },
+        ease: "none",
+        scrollTrigger: {
+          trigger: pin,
+          start: "top top",
+          end: () => `+=${getShift()}`,
+          pin: true,
+          scrub: 1,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+        },
+      });
+    });
+
+    const onLoad = () => ScrollTrigger.refresh();
+    window.addEventListener("load", onLoad);
 
     return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      desktop.removeEventListener("change", onScroll);
+      window.removeEventListener("load", onLoad);
+      mm.revert();
     };
   }, []);
 
   return (
-    // Extra height on mobile = scroll budget for the horizontal pan.
-    // 170svh gives a relaxed pan speed without too much dead space.
     <section
-      ref={sectionRef}
       aria-labelledby="how-heading"
-      className="relative bg-white max-lg:h-[140svh] lg:py-20"
+      className="max-lg:-mb-[calc((100svh_-_1.25*min(80vw,30rem,46svh))/2_-_2.5rem)] max-lg:pt-14 lg:pb-12 lg:pt-20"
     >
-      <div className="max-lg:sticky max-lg:top-0 max-lg:flex max-lg:h-svh max-lg:flex-col max-lg:justify-start max-lg:overflow-hidden max-lg:pt-6 md:max-lg:pt-10 lg:py-0">
-        {/* Heading */}
-        <div className="px-5 mb-6 md:px-12 lg:mb-10 lg:px-[5.7%]">
-          <h2
-            id="how-heading"
-            className="text-[clamp(1.75rem,3vw,2.5rem)] font-normal leading-[1.1] tracking-[-0.02em] text-charcoal"
-          >
-            How Comfort works
-          </h2>
-        </div>
+      {/* Heading: not pinned, scrolls away normally */}
+      <div className="mb-6 px-5 md:px-12 lg:mb-10 lg:px-[5.7%]">
+        <h2
+          id="how-heading"
+          className="text-[clamp(1.75rem,3vw,2.5rem)] font-normal leading-[1.1] tracking-[-0.02em] text-charcoal"
+        >
+          How Comfort works
+        </h2>
+      </div>
 
-        {/* Cards: scroll-driven track on mobile/tablet, 3-col grid on lg */}
+      {/* Pinned part: only the cards, one screen tall below lg */}
+      <div
+        ref={pinRef}
+        className="max-lg:h-svh max-lg:overflow-hidden max-lg:pt-6"
+      >
         <div
           ref={trackRef}
-          className="flex w-max gap-4 px-5 max-lg:will-change-transform max-lg:[transform:translateX(var(--x,0px))] md:px-12 lg:grid lg:w-auto lg:grid-cols-3 lg:gap-8 lg:px-[2.7%]"
+          className="flex w-max gap-4 px-5 will-change-transform md:px-12 lg:grid lg:w-auto lg:grid-cols-3 lg:gap-8 lg:px-[2.7%]"
         >
           {steps.map((step) => (
             <article
@@ -110,11 +113,9 @@ export default function HowComfortWorks() {
               <img
                 src={step.image}
                 alt={step.alt}
-                loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover"
               />
 
-              {/* Glass text panel */}
               <div className="absolute inset-x-3 bottom-3 flex h-[6.75rem] flex-col justify-center rounded-xl border border-white/20 bg-white/10 px-3.5 py-2.5 text-white backdrop-blur-md [text-shadow:0_1px_8px_rgba(0,0,0,0.35)] lg:inset-x-4 lg:bottom-4 lg:h-[7rem] lg:px-4 lg:py-3">
                 <p className="text-[0.5625rem] font-medium uppercase tracking-[0.14em] text-white/80 lg:text-[0.625rem]">
                   {step.n} / {step.label}

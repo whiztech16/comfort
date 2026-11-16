@@ -163,3 +163,10 @@ export async function softDeleteComfort(id: string, viewerId: string) {
 }
 
 export type ComfortRow = NonNullable<Awaited<ReturnType<typeof findComfortFor>>>;
+export async function countUnopened(recipientId: string) {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(comforts)
+    .where(and(eq(comforts.recipientId, recipientId), isNull(comforts.openedAt), notBlocked));
+  return row?.n ?? 0;
+}

@@ -16,7 +16,14 @@ import * as service from "./auth.service";
 
 type Session = { accessToken: string; expiresIn: number; refreshToken: string; refreshExpiresAt: Date };
 
-const cookie = { httpOnly: true, secure: isProd, sameSite: "lax", path: "/api/v1/auth" } as const;
+// Frontend (vercel.app) and API (onrender.com) are different sites,
+
+const cookie = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? "none" : "lax",
+  path: "/api/v1/auth",
+} as const;
 const ua = (req: Request) => req.get("user-agent");
 
 const readCookie = (req: Request) => {

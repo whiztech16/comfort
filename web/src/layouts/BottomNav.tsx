@@ -3,8 +3,8 @@ import { Plus } from "lucide-react";
 import { navItems } from "./navitems";
 import type { NavItemType } from "./navitems";
 import LiquidGlassFilter from "./LiquidGlassFilter";
+import { useUnopenedComfortCount } from "../hooks/useUnopenedComforts";
 
-// Order in navItems: Home, Comforts, New post (+ button), Profile
 const [home, comforts, , profile] = navItems;
 
 function NavItem({ to, label, icon: Icon, badge }: Readonly<NavItemType>) {
@@ -23,7 +23,7 @@ function NavItem({ to, label, icon: Icon, badge }: Readonly<NavItemType>) {
         <Icon aria-hidden className="h-5 w-5" strokeWidth={1.75} />
         {badge ? (
           <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#243447] px-1 text-[0.625rem] font-semibold text-white">
-            {badge}
+            {badge > 9 ? "9+" : badge}
           </span>
         ) : null}
       </span>
@@ -34,10 +34,10 @@ function NavItem({ to, label, icon: Icon, badge }: Readonly<NavItemType>) {
 
 export default function BottomNav() {
   const inConversation = useMatch("/comforts/conversations/:conversationId");
+  const unopened = useUnopenedComfortCount();
   if (inConversation) return null;
 
   return (
-    /* Outer wrapper: thick blur base + soft top border */
     <nav
       aria-label="Primary"
       className="shrink-0 px-3 pb-5 pt-2 lg:hidden"
@@ -51,7 +51,6 @@ export default function BottomNav() {
     >
       <LiquidGlassFilter />
 
-      {/* Inner pill — extra glass layer for depth */}
       <div
         className="liquid-glass liquid-glass-nav mx-auto flex max-w-md items-center justify-between rounded-[2rem] px-2 py-2"
         style={{
@@ -64,13 +63,10 @@ export default function BottomNav() {
           border: "1px solid rgba(255,255,255,0.75)",
         }}
       >
-        {/* 1. Home */}
         <NavItem {...home} />
 
-        {/* 2. Comforts */}
-        <NavItem {...comforts} />
+        <NavItem {...comforts} badge={unopened} />
 
-        {/* 3. Create Post — floating dark pill */}
         <Link
           to="/posts/new"
           aria-label="New post"
@@ -86,7 +82,6 @@ export default function BottomNav() {
           <Plus aria-hidden className="h-6 w-6 text-white" strokeWidth={2.25} />
         </Link>
 
-        {/* 4. Profile */}
         <NavItem {...profile} />
       </div>
     </nav>

@@ -1,7 +1,7 @@
 import { PenLine, MailOpen, HeartHandshake } from "lucide-react";
-import shareImg from "../../assets/images/card1img.png";
-import receiveImg from "../../assets/images/card2img.png";
-import supportImg from "../../assets/images/card3img.png";
+import shareImg from "../../assets/images/card1img.webp";
+import receiveImg from "../../assets/images/card2 img.webp";
+import supportImg from "../../assets/images/card3img.webp";
 import { PrimaryButton } from "../shared/PrimaryButton";
 
 const points = [

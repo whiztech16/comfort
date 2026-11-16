@@ -9,6 +9,8 @@ type PrivacyStepProps = Readonly<{
   onChange: (patch: Partial<OnboardingData>) => void;
   onBack: () => void;
   onContinue: () => void;
+  loading: boolean;
+  error: string | null;
 }>;
 
 export default function PrivacyStep({
@@ -16,6 +18,8 @@ export default function PrivacyStep({
   onChange,
   onBack,
   onContinue,
+  loading,
+  error,
 }: PrivacyStepProps) {
   return (
     <OnboardingShell
@@ -59,9 +63,24 @@ export default function PrivacyStep({
         your name or stay anonymous.
       </p>
 
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
       <div className="mt-auto pt-8">
-        <PrimaryButton onClick={onContinue} className="w-full">
-          Continue
+        <PrimaryButton
+          onClick={() => {
+            if (!loading) onContinue();
+          }}
+          className="w-full"
+        >
+          {loading ? (
+            <Loader2 aria-label="Saving" className="mx-auto h-5 w-5 animate-spin" />
+          ) : (
+            "Continue"
+          )}
         </PrimaryButton>
       </div>
     </OnboardingShell>

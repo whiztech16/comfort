@@ -19,7 +19,7 @@ type Phase = "idle" | "sending" | "sent";
 
 const isIdentity = (v: string): v is Identity => v === "named" || v === "anonymous";
 
-const MAX_LENGTH = 500;
+const MAX_LENGTH = 2000;
 const MIN_SENDING_MS = 1400;
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));

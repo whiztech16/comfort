@@ -2,8 +2,9 @@ import { Router } from "express";
 import { authenticate } from "../../middleware/authenticate";
 import { requireOnboarded } from "../../middleware/require-onboarded";
 import { userLimiter } from "../../shared/http/user-limiter";
-import { appreciate, getOne, open, received, remove, sendComfort, sent } from "./comforts.controller";
+import { appreciate, getOne, open, received, remove, sendComfort, sent ,unopenedCount} from "./comforts.controller";
 import { blockComfortSender } from "../blocks/blocks.controller";
+
 const hour = 60 * 60 * 1000;
 const sendLimiter = userLimiter(30, hour);
 const appreciateLimiter = userLimiter(30, hour);
@@ -20,4 +21,5 @@ comfortsRouter.get("/:id", authenticate, readLimiter, requireOnboarded, getOne);
 comfortsRouter.delete("/:id", authenticate, deleteLimiter, requireOnboarded, remove);
 comfortsRouter.post("/:id/open", authenticate, openLimiter, requireOnboarded, open);
 comfortsRouter.post("/:id/appreciation", authenticate, appreciateLimiter, requireOnboarded, appreciate);
+comfortsRouter.get("/unopened-count", authenticate, readLimiter, requireOnboarded, unopenedCount);
 comfortsRouter.post("/:id/block", authenticate, appreciateLimiter, requireOnboarded, blockComfortSender);
