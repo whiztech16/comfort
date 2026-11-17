@@ -9,7 +9,7 @@ export const createComfortSchema = z
       .string()
       .trim()
       .min(1, "Content is required")
-      .max(500, "Content must be 500 characters or fewer")
+            .max(2000, "Content must be 2000 characters or fewer")
       .refine(hasNoUnsafeChars, "Content contains invalid characters"),
     isAnonymous: z.boolean(),
   })
