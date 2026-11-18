@@ -33,6 +33,10 @@ declare global {
   }
 }
 
+// Google must be initialized only once per page load, not once per render
+let googleInitialized = false;
+let credentialHandler: ((credential: string) => void) | null = null;
+
 type GoogleAuthButtonProps = {
   text?: "Continue with Google" | "Sign up with Google";
 };
@@ -41,86 +45,111 @@ export default function GoogleAuthButton({ text = "Continue with Google" }: Goog
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
-  const hiddenBtnRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+  const handleCredential = async (credential: string) => {
+    try {
+      setLoading(true);
+      const data = await googleSignInApi(credential);
+      showToast("Welcome to Comfort 💙");
+      if (data?.user?.onboardingCompleted) {
+        navigate("/home");
+      } else {
+        navigate("/onboarding");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to sign in with Google.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Always points at the latest handler, so the effect below never needs to re-run
+  const handlerRef = useRef(handleCredential);
+  useEffect(() => {
+    handlerRef.current = handleCredential;
+  });
 
   useEffect(() => {
     if (!clientId) return;
 
-    function initGoogle() {
-      if (!window.google?.accounts?.id) {
-        setTimeout(initGoogle, 200);
+    credentialHandler = (credential) => {
+      void handlerRef.current(credential);
+    };
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const setup = () => {
+      if (cancelled) return;
+
+      const gid = window.google?.accounts?.id;
+      if (!gid) {
+        timer = setTimeout(setup, 200);
         return;
       }
 
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response) => {
-          if (!response.credential) return;
-          try {
-            setLoading(true);
-            const data = await googleSignInApi(response.credential);
-            showToast("Welcome to Comfort 💙");
-            if (data?.user?.onboardingCompleted) {
-              navigate("/home");
-            } else {
-              navigate("/onboarding");
-            }
-          } catch (err: any) {
-            showToast(err.message || "Failed to sign in with Google.");
-          } finally {
-            setLoading(false);
-          }
-        },
-      });
+      if (!googleInitialized) {
+        gid.initialize({
+          client_id: clientId,
+          callback: (response) => {
+            if (response.credential) credentialHandler?.(response.credential);
+          },
+        });
+        googleInitialized = true;
+      }
 
-      // Render official Google button into the hidden container so we can trigger it directly
-      if (hiddenBtnRef.current) {
-        window.google.accounts.id.renderButton(hiddenBtnRef.current, {
+      const el = overlayRef.current;
+      if (el) {
+        el.innerHTML = "";
+        gid.renderButton(el, {
+          type: "standard",
           theme: "outline",
           size: "large",
-          width: 320,
+          text: "continue_with",
+          shape: "rectangular",
+          width: Math.min(Math.round(el.offsetWidth) || 320, 400),
         });
       }
-    }
+    };
 
-    initGoogle();
-  }, [clientId, navigate, showToast]);
+    setup();
 
-  function handleClick() {
-    if (!clientId) {
-      showToast("Google Client ID not configured. Please set VITE_GOOGLE_CLIENT_ID in web/.env");
-      return;
-    }
-
-    // Trigger the official Google prompt or click the rendered button
-    if (hiddenBtnRef.current?.querySelector("div[role=button]")) {
-      (hiddenBtnRef.current.querySelector("div[role=button]") as HTMLElement).click();
-    } else if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
-    }
-  }
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      credentialHandler = null;
+    };
+  }, [clientId]);
 
   return (
-    <div className="relative w-full">
+    <div className="group relative w-full">
+      {/* Your styled button: visual only, clicks go to Google's button on top of it */}
       <button
         type="button"
+        tabIndex={-1}
+        aria-hidden="true"
         disabled={loading}
-        onClick={handleClick}
-        className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-black bg-white text-[0.8125rem] font-medium text-charcoal transition hover:bg-offwhite focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-calm disabled:opacity-60"
+        className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-black bg-white text-[0.8125rem] font-medium text-charcoal transition group-hover:bg-offwhite disabled:opacity-60"
       >
         <GoogleIcon />
         {loading ? "Signing in..." : text}
       </button>
 
-      {/* Hidden container used to mount Google's official iframe button for native popup handling */}
+      {/* Google's real button, invisible, covering the styled button */}
       <div
-        ref={hiddenBtnRef}
-        className="pointer-events-none absolute left-0 top-0 opacity-0 overflow-hidden w-0 h-0"
-        aria-hidden="true"
+        ref={overlayRef}
+        onClick={() => {
+          if (!clientId) {
+            showToast("Google Client ID not configured. Please set VITE_GOOGLE_CLIENT_ID in web/.env");
+          }
+        }}
+        className={`absolute inset-0 flex items-center justify-center overflow-hidden opacity-[0.01] ${
+          loading ? "pointer-events-none" : ""
+        }`}
       />
     </div>
   );
 }
-

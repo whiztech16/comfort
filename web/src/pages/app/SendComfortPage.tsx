@@ -25,10 +25,15 @@ const MIN_SENDING_MS = 1400;
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 function friendlyError(err: unknown): string {
-  const e = err as { status?: number; message?: string } | null;
+  const e = err as {
+    status?: number;
+    message?: string;
+    errors?: { message?: string }[];
+  } | null;
   if (!e?.status) return "Check your connection and try again.";
   if (e.status === 429) return "You've sent a lot of Comforts recently. Please try again later.";
-  if (e.status === 422) return "Please check your message and try again.";
+  // Show the server's own reason when it gives one
+  if (e.status === 422) return e.errors?.[0]?.message || "Please check your message and try again.";
   if (e.status === 404) return "This post isn't available anymore.";
   return e.message || "We couldn't send your Comfort. Please try again.";
 }
